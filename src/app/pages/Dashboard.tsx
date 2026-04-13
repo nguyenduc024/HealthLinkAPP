@@ -82,11 +82,11 @@ export function Dashboard() {
           </div>
           <div className="h-72 w-full min-h-[288px]">
             <ResponsiveContainer width="100%" height={288}>
-              <AreaChart data={data} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
-                <defs>
-                  <linearGradient id="colorPatients" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="5%" stopColor="#059669" stopOpacity={0.1}/>
-                    <stop offset="95%" stopColor="#059669" stopOpacity={0}/>
+              <AreaChart id="dashboard-chart" accessibilityLayer={false} data={data} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
+                <defs key="defs">
+                  <linearGradient id="colorPatients" key="colorPatients" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="5%" stopColor="#059669" stopOpacity={0.1} key="stop1"/>
+                    <stop offset="95%" stopColor="#059669" stopOpacity={0} key="stop2"/>
                   </linearGradient>
                 </defs>
                 <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e2e8f0" />
