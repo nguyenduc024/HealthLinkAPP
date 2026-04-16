@@ -5,7 +5,7 @@ app.on("ready", ()=>{
     const mainWindow = new BrowserWindow({
         width: 1200,
         height: 800,
-        icon: path.resolve(__dirname, '../../src/assets/icons/win/icon.ico'),
+        icon: path.resolve(__dirname, 'assets', 'icon.ico'),
         webPreferences: {
             nodeIntegration: false,
             contextIsolation: true,
