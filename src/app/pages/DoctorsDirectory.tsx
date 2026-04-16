@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
-import { Search, Plus, Filter, MoreVertical, Edit, Trash2 } from "lucide-react";
-import { fetchApi, registerRefreshOnFocus } from "../lib/api";
+import { Search, Plus, Filter, MoreVertical, Edit, Trash2, X, Loader2 } from "lucide-react";
+import { fetchApi, API_BASE, registerRefreshOnFocus } from "../lib/api";
 
 interface DoctorData {
   doctorId: number;
@@ -16,15 +16,49 @@ interface DoctorData {
   birthday: string | null;
 }
 
+interface DepartmentOption {
+  dId: number;
+  dName: string;
+}
+
+const EMPTY_FORM = {
+  firstName: "",
+  middleName: "",
+  lastName: "",
+  sex: "Nam",
+  phone: "",
+  address: "",
+  specialty: "",
+  birthday: "",
+  departmentId: 0,
+};
+
 export function DoctorsDirectory() {
   const [searchTerm, setSearchTerm] = useState("");
   const [doctors, setDoctors] = useState<DoctorData[]>([]);
   const [loading, setLoading] = useState(true);
 
+  // Add doctor modal state
+  const [showAddModal, setShowAddModal] = useState(false);
+  const [departments, setDepartments] = useState<DepartmentOption[]>([]);
+  const [addForm, setAddForm] = useState({ ...EMPTY_FORM });
+  const [addLoading, setAddLoading] = useState(false);
+  const [addMsg, setAddMsg] = useState<{ type: "success" | "error"; text: string } | null>(null);
+
+  const loadDoctors = async () => {
+    try {
+      const data = await fetchApi<DoctorData[]>("/doctors");
+      setDoctors(data);
+    } catch {
+    } finally {
+      setLoading(false);
+    }
+  };
+
   useEffect(() => {
     let isActive = true;
 
-    const loadDoctors = async () => {
+    const load = async () => {
       try {
         const data = await fetchApi<DoctorData[]>("/doctors");
         if (isActive) {
@@ -38,9 +72,9 @@ export function DoctorsDirectory() {
       }
     };
 
-    void loadDoctors();
+    void load();
     const cleanupRefresh = registerRefreshOnFocus(() => {
-      void loadDoctors();
+      void load();
     });
 
     return () => {
@@ -48,6 +82,57 @@ export function DoctorsDirectory() {
       cleanupRefresh();
     };
   }, []);
+
+  const openAddModal = async () => {
+    setShowAddModal(true);
+    setAddMsg(null);
+    setAddForm({ ...EMPTY_FORM });
+    try {
+      const depts = await fetchApi<DepartmentOption[]>("/departments");
+      setDepartments(depts);
+    } catch {
+      setAddMsg({ type: "error", text: "Không thể tải danh sách khoa." });
+    }
+  };
+
+  const submitAddDoctor = async () => {
+    if (!addForm.firstName.trim() || !addForm.lastName.trim()) {
+      setAddMsg({ type: "error", text: "Họ và tên không được để trống." });
+      return;
+    }
+    setAddLoading(true);
+    setAddMsg(null);
+    try {
+      const res = await fetch(`${API_BASE}/add-doctor`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          firstName: addForm.firstName,
+          middleName: addForm.middleName || null,
+          lastName: addForm.lastName,
+          sex: addForm.sex || null,
+          phone: addForm.phone || null,
+          address: addForm.address || null,
+          specialty: addForm.specialty || null,
+          birthday: addForm.birthday || null,
+          departmentId: addForm.departmentId || null,
+        }),
+      });
+      const data = await res.json() as { status: string; message: string };
+      if (data.status === "success") {
+        setAddMsg({ type: "success", text: data.message });
+        setAddForm({ ...EMPTY_FORM });
+        // Reload danh sách bác sĩ
+        void loadDoctors();
+      } else {
+        setAddMsg({ type: "error", text: data.message });
+      }
+    } catch {
+      setAddMsg({ type: "error", text: "Lỗi kết nối server." });
+    } finally {
+      setAddLoading(false);
+    }
+  };
 
   const filteredDoctors = doctors.filter(doc => 
     doc.fullName.toLowerCase().includes(searchTerm.toLowerCase()) || 
@@ -61,7 +146,10 @@ export function DoctorsDirectory() {
           <h1 className="text-2xl font-bold tracking-tight text-slate-900">Doctors Directory</h1>
           <p className="text-sm text-slate-500 mt-1">Manage practitioners and view their details.</p>
         </div>
-        <button className="flex items-center gap-2 px-4 py-2 bg-emerald-600 text-white text-sm font-medium rounded-lg hover:bg-emerald-700 transition-colors shadow-sm shadow-emerald-200">
+        <button
+          onClick={() => void openAddModal()}
+          className="flex items-center gap-2 px-4 py-2 bg-emerald-600 text-white text-sm font-medium rounded-lg hover:bg-emerald-700 transition-colors shadow-sm shadow-emerald-200"
+        >
           <Plus className="w-4 h-4" />
           Add Doctor
         </button>
@@ -164,6 +252,144 @@ export function DoctorsDirectory() {
           </div>
         </div>
       </div>
+
+      {/* Add Doctor Modal */}
+      {showAddModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm animate-in fade-in duration-200" onClick={() => setShowAddModal(false)}>
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-lg mx-4 max-h-[90vh] overflow-y-auto animate-in zoom-in-95 duration-200" onClick={e => e.stopPropagation()}>
+            <div className="flex items-center justify-between p-6 pb-4 border-b border-slate-100">
+              <h2 className="text-lg font-bold text-slate-900">Thêm bác sĩ mới</h2>
+              <button onClick={() => setShowAddModal(false)} className="p-1 rounded-lg hover:bg-slate-100 transition-colors">
+                <X className="w-5 h-5 text-slate-400" />
+              </button>
+            </div>
+            <div className="p-6 space-y-4">
+              {addMsg && (
+                <div className={`p-3 rounded-lg text-sm font-medium ${addMsg.type === "success" ? "bg-emerald-50 text-emerald-700 border border-emerald-200" : "bg-red-50 text-red-700 border border-red-200"}`}>
+                  {addMsg.text}
+                </div>
+              )}
+
+              <div className="grid grid-cols-3 gap-3">
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 mb-1.5">Họ <span className="text-red-500">*</span></label>
+                  <input
+                    type="text"
+                    className="w-full px-3 py-2.5 rounded-lg border border-slate-200 bg-white text-sm focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none"
+                    placeholder="Nguyễn"
+                    value={addForm.lastName}
+                    onChange={e => setAddForm(f => ({ ...f, lastName: e.target.value }))}
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 mb-1.5">Tên đệm</label>
+                  <input
+                    type="text"
+                    className="w-full px-3 py-2.5 rounded-lg border border-slate-200 bg-white text-sm focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none"
+                    placeholder="Văn"
+                    value={addForm.middleName}
+                    onChange={e => setAddForm(f => ({ ...f, middleName: e.target.value }))}
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 mb-1.5">Tên <span className="text-red-500">*</span></label>
+                  <input
+                    type="text"
+                    className="w-full px-3 py-2.5 rounded-lg border border-slate-200 bg-white text-sm focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none"
+                    placeholder="A"
+                    value={addForm.firstName}
+                    onChange={e => setAddForm(f => ({ ...f, firstName: e.target.value }))}
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 mb-1.5">Giới tính</label>
+                  <select
+                    className="w-full px-3 py-2.5 rounded-lg border border-slate-200 bg-white text-sm focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none"
+                    value={addForm.sex}
+                    onChange={e => setAddForm(f => ({ ...f, sex: e.target.value }))}
+                  >
+                    <option value="Nam">Nam</option>
+                    <option value="Nữ">Nữ</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 mb-1.5">Ngày sinh</label>
+                  <input
+                    type="date"
+                    className="w-full px-3 py-2.5 rounded-lg border border-slate-200 bg-white text-sm focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none"
+                    value={addForm.birthday}
+                    onChange={e => setAddForm(f => ({ ...f, birthday: e.target.value }))}
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-1.5">Số điện thoại</label>
+                <input
+                  type="text"
+                  className="w-full px-3 py-2.5 rounded-lg border border-slate-200 bg-white text-sm focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none"
+                  placeholder="0912345678"
+                  value={addForm.phone}
+                  onChange={e => setAddForm(f => ({ ...f, phone: e.target.value }))}
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-1.5">Địa chỉ</label>
+                <input
+                  type="text"
+                  className="w-full px-3 py-2.5 rounded-lg border border-slate-200 bg-white text-sm focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none"
+                  placeholder="123 Đường ABC, Quận XYZ"
+                  value={addForm.address}
+                  onChange={e => setAddForm(f => ({ ...f, address: e.target.value }))}
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-1.5">Chuyên khoa</label>
+                <input
+                  type="text"
+                  className="w-full px-3 py-2.5 rounded-lg border border-slate-200 bg-white text-sm focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none"
+                  placeholder="Tim mạch, Nội khoa, ..."
+                  value={addForm.specialty}
+                  onChange={e => setAddForm(f => ({ ...f, specialty: e.target.value }))}
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-1.5">Khoa</label>
+                <select
+                  className="w-full px-3 py-2.5 rounded-lg border border-slate-200 bg-white text-sm focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none"
+                  value={addForm.departmentId}
+                  onChange={e => setAddForm(f => ({ ...f, departmentId: Number(e.target.value) }))}
+                >
+                  <option value={0}>-- Chọn khoa --</option>
+                  {departments.map(d => <option key={d.dId} value={d.dId}>{d.dName}</option>)}
+                </select>
+              </div>
+            </div>
+            <div className="flex gap-3 p-6 pt-4 border-t border-slate-100">
+              <button
+                onClick={() => setShowAddModal(false)}
+                className="flex-1 px-4 py-2.5 text-sm font-medium text-slate-700 bg-white border border-slate-200 rounded-lg hover:bg-slate-50 transition-colors"
+              >
+                Hủy
+              </button>
+              <button
+                onClick={() => void submitAddDoctor()}
+                disabled={addLoading}
+                className="flex-1 px-4 py-2.5 text-sm font-medium text-white bg-emerald-600 rounded-lg hover:bg-emerald-700 transition-colors disabled:opacity-50 flex items-center justify-center gap-2"
+              >
+                {addLoading && <Loader2 className="w-4 h-4 animate-spin" />}
+                {addLoading ? "Đang xử lý..." : "Thêm bác sĩ"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

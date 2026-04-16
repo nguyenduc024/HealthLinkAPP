@@ -24,8 +24,9 @@ public class ClinicManagerDAO {
 	// 1. thêm bác sĩ mới và thêm bệnh nhân mới
 	public boolean addDoctor(Doctor d) {
 		String sql = "INSERT INTO DOCTOR (DrFirstName, DrMiddleName, DrLastName, DrBirthday, DrSex, DrPhone, DrAddress, DrSpecialty, DId) VALUES (?,?,?,?,?,?,?,?,?)";
+		Integer deptId = (d.getDepartment() != null && d.getDepartment().getdId() > 0) ? d.getDepartment().getdId() : null;
 		return executeUpdate(sql, d.getFirstName(), d.getMiddleName(), d.getLastName(), d.getBirthDate(), d.getSex(),
-				d.getPhone(), d.getAddress(), d.getSpecialty(), d.getDepartment().getdId());
+				d.getPhone(), d.getAddress(), d.getSpecialty(), deptId);
 	}
 
 	public boolean addPatient(Patient p) {

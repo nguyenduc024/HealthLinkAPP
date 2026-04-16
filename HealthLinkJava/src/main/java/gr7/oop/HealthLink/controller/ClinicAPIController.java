@@ -181,6 +181,48 @@ public class ClinicAPIController {
 		return response("error", "Không thể lưu lịch làm việc.");
 	}
 
+	// API: Thêm bác sĩ mới
+	@PostMapping("/add-doctor")
+	public Map<String, String> addDoctor(@RequestBody Map<String, String> payload) {
+		try {
+			String firstName = payload.get("firstName");
+			String middleName = payload.get("middleName");
+			String lastName = payload.get("lastName");
+			String sex = payload.get("sex");
+			String phone = payload.get("phone");
+			String address = payload.get("address");
+			String specialty = payload.get("specialty");
+			String birthdayStr = payload.get("birthday");
+			String departmentIdStr = payload.get("departmentId");
+
+			if (firstName == null || firstName.isBlank() || lastName == null || lastName.isBlank()) {
+				return response("error", "Họ và tên không được để trống.");
+			}
+
+			java.sql.Date birthday = null;
+			if (birthdayStr != null && !birthdayStr.isBlank()) {
+				birthday = java.sql.Date.valueOf(birthdayStr);
+			}
+
+			int deptId = 0;
+			if (departmentIdStr != null && !departmentIdStr.isBlank()) {
+				deptId = Integer.parseInt(departmentIdStr);
+			}
+
+			Department dept = new Department(deptId, null, null);
+			Doctor doctor = new Doctor(0, firstName, middleName, lastName, birthday, sex, phone, address, specialty, dept);
+
+			boolean success = dao.addDoctor(doctor);
+			if (success) {
+				return response("success", "Thêm bác sĩ thành công!");
+			} else {
+				return response("error", "Lỗi hệ thống khi lưu bác sĩ.");
+			}
+		} catch (Exception e) {
+			return response("error", "Lỗi: " + e.getMessage());
+		}
+	}
+
 	// ===== LISTING APIs =====
 
 	@GetMapping("/doctors")
