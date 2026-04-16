@@ -201,45 +201,7 @@ public class ClinicManagerDAO {
 		}
 	}
 
-	// 4. Thống kê và sắp xếp bác sĩ (heap sort)
-	// tạo ra lớp DoctorStats để chứa dữ liệu thống kê trả về cho frontend
-	public static class DoctorStats {
-		public int doctorId;
-		public String fullName;
-		public int totalAppointments;
-
-		public DoctorStats(int doctorId, String fullName, int totalAppointments) {
-			this.doctorId = doctorId;
-			this.fullName = fullName;
-			this.totalAppointments = totalAppointments;
-		}
-	}
-
-	// lấy dữ liệu bác sĩ từ database
-	public List<DoctorStats> getTopDoctors() {
-		List<DoctorStats> list = new ArrayList<>();
-		String sql = "SELECT d.DrId, d.DrLastName + ' ' + ISNULL(d.DrMiddleName + ' ', '') + d.DrFirstName AS FullName, "
-				+ "COUNT(a.APId) AS TotalAppointments " + "FROM DOCTOR d "
-				+ "LEFT JOIN APPOINTMENT a ON d.DrId = a.DrId "
-				+ "GROUP BY d.DrId, d.DrLastName, d.DrMiddleName, d.DrFirstName";
-
-		try (Connection conn = DatabaseConnection.getConnection();
-				PreparedStatement pstmt = conn.prepareStatement(sql);
-				ResultSet rs = pstmt.executeQuery()) {
-
-			while (rs.next()) {
-				list.add(new DoctorStats(rs.getInt("DrId"), rs.getString("FullName"), rs.getInt("TotalAppointments")));
-			}
-		} catch (SQLException e) {
-			System.err.println("Lỗi lấy dữ liệu thống kê: " + e.getMessage());
-		}
-
-		// Gọi thuật toán sắp xếp trước khi trả về
-		heapSort(list);
-		return list;
-	}
-
-	// 5. đặt lịch làm việc bác sĩ (tự lấy WSMaxPatientSlot từ CRCapacity)
+	// 4. đặt lịch làm việc bác sĩ (tự lấy WSMaxPatientSlot từ CRCapacity)
 	public boolean setWorkScheduleAuto(int drId, int crId, java.sql.Date wsDay, java.sql.Time wsStartTime, java.sql.Time wsEndTime) {
 		String sql = "INSERT INTO WORK_SCHEDULE (DrId, CRId, WSDay, WSStartime, WSEndtime, WSMaxPatientSlot) "
 				+ "SELECT ?, ?, ?, ?, ?, CRCapacity FROM CLINIC_ROOM WHERE CRId = ?";
@@ -252,17 +214,6 @@ public class ClinicManagerDAO {
 		return executeUpdate(sql, wsId);
 	}
 
-	private void heapSort(List<DoctorStats> list) {
-		int n = list.size();
-		for (int i = n / 2 - 1; i >= 0; i--)
-			heapify(list, n, i);
-		for (int i = n - 1; i > 0; i--) {
-			DoctorStats temp = list.get(0);
-			list.set(0, list.get(i));
-			list.set(i, temp);
-			heapify(list, i, 0);
-		}
-	}
 
 	// 6. Xuất hóa đơn tự động
 	public boolean generateInvoice(int apId, int prId, String paymentMethod) {
@@ -408,24 +359,6 @@ public class ClinicManagerDAO {
 			System.err.println("Lỗi lấy danh sách lịch hẹn: " + e.getMessage());
 		}
 		return list;
-	}
-
-	private void heapify(List<DoctorStats> list, int n, int i) {
-		int smallest = i; // Tìm min để sắp xếp giảm dần
-		int left = 2 * i + 1;
-		int right = 2 * i + 2;
-
-		if (left < n && list.get(left).totalAppointments < list.get(smallest).totalAppointments)
-			smallest = left;
-		if (right < n && list.get(right).totalAppointments < list.get(smallest).totalAppointments)
-			smallest = right;
-
-		if (smallest != i) {
-			DoctorStats swap = list.get(i);
-			list.set(i, list.get(smallest));
-			list.set(smallest, swap);
-			heapify(list, n, smallest);
-		}
 	}
 
 	// Hàm dùng chung cho các lệnh INSERT, UPDATE, DELETE

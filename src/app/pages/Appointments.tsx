@@ -313,7 +313,7 @@ export function Appointments() {
             <div className="flex gap-2 w-full sm:w-auto">
               <button className="flex-1 sm:flex-none flex items-center justify-center gap-2 px-3 py-1.5 bg-white border border-slate-200 text-slate-700 text-sm font-medium rounded-lg hover:bg-slate-50 transition-colors shadow-sm">
                 <Filter className="w-4 h-4" />
-                Filter
+                Bộ lọc
               </button>
             </div>
           </div>

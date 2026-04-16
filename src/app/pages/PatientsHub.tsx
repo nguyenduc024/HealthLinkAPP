@@ -111,12 +111,12 @@ export function PatientsHub() {
     <div className="space-y-6 animate-in fade-in duration-500">
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
-          <h1 className="text-2xl font-bold tracking-tight text-slate-900">Patients Hub</h1>
-          <p className="text-sm text-slate-500 mt-1">View and manage patient records securely.</p>
+          <h1 className="text-2xl font-bold tracking-tight text-slate-900">Hồ sơ bệnh nhân</h1>
+          <p className="text-sm text-slate-500 mt-1">Xem và quản lý hồ sơ bệnh nhân một cách an toàn.</p>
         </div>
         <button onClick={() => openAddModal()} className="flex items-center gap-2 px-4 py-2 bg-emerald-600 text-white text-sm font-medium rounded-lg hover:bg-emerald-700 transition-colors shadow-sm shadow-emerald-200">
           <Plus className="w-4 h-4" />
-          Add New Patient
+          Thêm bệnh nhân mới
         </button>
       </div>
 
@@ -193,7 +193,7 @@ export function PatientsHub() {
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
             <input 
               type="text" 
-              placeholder="Search by Patient ID or Name..." 
+              placeholder="Tìm kiếm theo tên hoặc mã bệnh nhân..." 
               className="w-full pl-9 pr-4 py-2 bg-white border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none transition-all shadow-sm"
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
@@ -202,7 +202,7 @@ export function PatientsHub() {
           <div className="flex items-center gap-2">
             <button className="flex items-center justify-center gap-2 px-4 py-2 bg-white border border-slate-200 text-slate-700 text-sm font-medium rounded-lg hover:bg-slate-50 transition-colors shadow-sm">
               <Filter className="w-4 h-4" />
-              Filter Options
+              Bộ lọc
             </button>
             <button className="flex items-center justify-center p-2 bg-white border border-slate-200 text-slate-700 rounded-lg hover:bg-slate-50 transition-colors shadow-sm">
               <MoreHorizontal className="w-5 h-5" />

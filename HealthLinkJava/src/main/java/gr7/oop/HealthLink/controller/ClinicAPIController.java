@@ -22,7 +22,6 @@ import gr7.oop.HealthLink.dao.ClinicManagerDAO.AppointmentInfo;
 import gr7.oop.HealthLink.dao.ClinicManagerDAO.ClinicRoomInfo;
 import gr7.oop.HealthLink.dao.ClinicManagerDAO.DashboardStats;
 import gr7.oop.HealthLink.dao.ClinicManagerDAO.DoctorInfo;
-import gr7.oop.HealthLink.dao.ClinicManagerDAO.DoctorStats;
 import gr7.oop.HealthLink.dao.ClinicManagerDAO.InvoiceInfo;
 import gr7.oop.HealthLink.dao.ClinicManagerDAO.MedicineInfo;
 import gr7.oop.HealthLink.dao.ClinicManagerDAO.PatientInfo;
@@ -52,14 +51,6 @@ public class ClinicAPIController {
 		map.put("status", status);
 		map.put("message", message);
 		return map;
-	}
-
-	// Cung cấp API đường dẫn: http://localhost:8080/api/top-doctors
-	@GetMapping("/top-doctors")
-	public List<DoctorStats> getTopDoctors() {
-		// Hàm này sẽ liên kết xuống SQL Server, đếm số lịch hẹn,
-		// chạy thuật toán Heap-Sort sắp xếp giảm dần rồi trả về đây.
-		return dao.getTopDoctors();
 	}
 
 	@PostMapping("/book-appointment")
