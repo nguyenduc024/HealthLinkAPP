@@ -1,10 +1,13 @@
 package gr7.oop.HealthLink.controller;
 
+import java.sql.Date;
+import java.sql.Time;
 import java.sql.Timestamp;
 import java.util.List;
 import java.util.Map;
 
 import org.springframework.web.bind.annotation.CrossOrigin;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -23,6 +26,7 @@ import gr7.oop.HealthLink.dao.ClinicManagerDAO.DoctorStats;
 import gr7.oop.HealthLink.dao.ClinicManagerDAO.InvoiceInfo;
 import gr7.oop.HealthLink.dao.ClinicManagerDAO.MedicineInfo;
 import gr7.oop.HealthLink.dao.ClinicManagerDAO.PatientInfo;
+import gr7.oop.HealthLink.dao.ClinicManagerDAO.WorkScheduleInfo;
 import gr7.oop.HealthLink.entity.Appointment;
 import gr7.oop.HealthLink.entity.ClinicRoom;
 import gr7.oop.HealthLink.entity.Department;
@@ -31,7 +35,6 @@ import gr7.oop.HealthLink.entity.MedicalRecord;
 import gr7.oop.HealthLink.entity.Patient;
 import gr7.oop.HealthLink.entity.Prescription;
 import gr7.oop.HealthLink.entity.PrescriptionDetail;
-import gr7.oop.HealthLink.entity.WorkSchedule;
 import gr7.oop.HealthLink.exception.DuplicateAppointmentException;
 
 // Tự động chuyển Object Java sang JSON hoặc XML
@@ -97,13 +100,42 @@ public class ClinicAPIController {
 	// API 4: Hủy lịch hẹn
 	@PutMapping("/appointments/{apId}/cancel")
 	public Map<String, String> cancelAppointment(@PathVariable int apId) {
-		// Tái sử dụng hàm update đã có sẵn ở DAO
 		boolean success = dao.updateAppointmentStatus(apId, "Đã hủy");
-
 		if (success) {
 			return response("success", "Đã hủy lịch hẹn thành công!");
 		} else {
 			return response("error", "Lỗi: Không thể hủy lịch hẹn này.");
+		}
+	}
+
+	// API: Xác nhận lịch hẹn
+	@PutMapping("/appointments/{apId}/confirm")
+	public Map<String, String> confirmAppointment(@PathVariable int apId) {
+		boolean success = dao.updateAppointmentStatus(apId, "Đã xác nhận");
+		if (success) {
+			return response("success", "Đã xác nhận lịch hẹn!");
+		} else {
+			return response("error", "Lỗi: Không thể xác nhận lịch hẹn.");
+		}
+	}
+
+	// API: Dời lịch hẹn
+	@PutMapping("/appointments/{apId}/reschedule")
+	public Map<String, String> rescheduleAppointment(@PathVariable int apId, @RequestBody Map<String, String> payload) {
+		try {
+			String newDateTime = payload.get("newDateTime");
+			if (newDateTime == null || newDateTime.isBlank()) {
+				return response("error", "Vui lòng chọn ngày giờ mới.");
+			}
+			java.sql.Timestamp ts = java.sql.Timestamp.valueOf(newDateTime);
+			boolean success = dao.rescheduleAppointment(apId, ts);
+			if (success) {
+				return response("success", "Đã dời lịch hẹn thành công!");
+			} else {
+				return response("error", "Lỗi: Không thể dời lịch hẹn.");
+			}
+		} catch (Exception e) {
+			return response("error", "Lỗi: " + e.getMessage());
 		}
 	}
 
@@ -173,12 +205,36 @@ public class ClinicAPIController {
 
 	// Bác sĩ đặt lịch làm việc
 	@PostMapping("/work-schedule/add")
-	public Map<String, String> addWorkSchedule(@RequestBody WorkSchedule ws) {
-		boolean success = dao.setWorkSchedule(ws);
-		if (success) {
-			return response("success", "Đã cập nhật lịch làm việc!");
+	public Map<String, String> addWorkSchedule(@RequestBody Map<String, String> payload) {
+		try {
+			int drId = Integer.parseInt(payload.get("drId"));
+			int crId = Integer.parseInt(payload.get("crId"));
+			Date wsDay = Date.valueOf(payload.get("wsDay"));
+			Time wsStartTime = Time.valueOf(payload.get("wsStartTime") + ":00");
+			Time wsEndTime = Time.valueOf(payload.get("wsEndTime") + ":00");
+
+			boolean success = dao.setWorkScheduleAuto(drId, crId, wsDay, wsStartTime, wsEndTime);
+			if (success) {
+				return response("success", "Đã thêm lịch làm việc!");
+			}
+			return response("error", "Không thể lưu lịch làm việc.");
+		} catch (Exception e) {
+			return response("error", "Dữ liệu không hợp lệ. Vui lòng kiểm tra lại.");
 		}
-		return response("error", "Không thể lưu lịch làm việc.");
+	}
+
+	@GetMapping("/work-schedules")
+	public List<WorkScheduleInfo> getAllWorkSchedules() {
+		return dao.getAllWorkSchedules();
+	}
+
+	@DeleteMapping("/work-schedules/{wsId}")
+	public Map<String, String> deleteWorkSchedule(@PathVariable int wsId) {
+		boolean success = dao.deleteWorkSchedule(wsId);
+		if (success) {
+			return response("success", "Đã xóa lịch làm việc!");
+		}
+		return response("error", "Không thể xóa lịch làm việc.");
 	}
 
 	// API: Thêm bác sĩ mới

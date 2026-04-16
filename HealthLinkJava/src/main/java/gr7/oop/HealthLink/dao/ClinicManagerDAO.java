@@ -17,7 +17,6 @@ import gr7.oop.HealthLink.entity.MedicalRecord;
 import gr7.oop.HealthLink.entity.Patient;
 import gr7.oop.HealthLink.entity.Prescription;
 import gr7.oop.HealthLink.entity.PrescriptionDetail;
-import gr7.oop.HealthLink.entity.WorkSchedule;
 import gr7.oop.HealthLink.exception.DuplicateAppointmentException;
 
 public class ClinicManagerDAO {
@@ -85,6 +84,11 @@ public class ClinicManagerDAO {
 	public boolean updateAppointmentStatus(int apId, String status) {
 		String sql = "UPDATE APPOINTMENT SET APStatus = ?, APUpdateAt = GETDATE() WHERE APId = ?";
 		return executeUpdate(sql, status, apId);
+	}
+
+	public boolean rescheduleAppointment(int apId, java.sql.Timestamp newDateTime) {
+		String sql = "UPDATE APPOINTMENT SET APDateTimes = ?, APStatus = N'Chờ xác nhận', APUpdateAt = GETDATE() WHERE APId = ?";
+		return executeUpdate(sql, newDateTime, apId);
 	}
 
 	// 3. Tạo hồ sơ bệnh án và kê đơn
@@ -208,11 +212,17 @@ public class ClinicManagerDAO {
 		return list;
 	}
 
-	// 5. đặt lịch làm việc bác sĩ
-	public boolean setWorkSchedule(WorkSchedule ws) {
-		String sql = "INSERT INTO WORK_SCHEDULE (DrId, CRId, WSDay, WSStartime, WSEndtime, WSMaxPatientSlot) VALUES (?,?,?,?,?,?)";
-		return executeUpdate(sql, ws.getDoctor().getId(), ws.getClinicRoom().getCrId(), ws.getWsDay(),
-				ws.getWsStartTime(), ws.getWsEndTime(), ws.getWsMaxPatientSlot());
+	// 5. đặt lịch làm việc bác sĩ (tự lấy WSMaxPatientSlot từ CRCapacity)
+	public boolean setWorkScheduleAuto(int drId, int crId, java.sql.Date wsDay, java.sql.Time wsStartTime, java.sql.Time wsEndTime) {
+		String sql = "INSERT INTO WORK_SCHEDULE (DrId, CRId, WSDay, WSStartime, WSEndtime, WSMaxPatientSlot) "
+				+ "SELECT ?, ?, ?, ?, ?, CRCapacity FROM CLINIC_ROOM WHERE CRId = ?";
+		return executeUpdate(sql, drId, crId, wsDay, wsStartTime, wsEndTime, crId);
+	}
+
+	// 5b. Xóa lịch làm việc
+	public boolean deleteWorkSchedule(int wsId) {
+		String sql = "DELETE FROM WORK_SCHEDULE WHERE WSId = ?";
+		return executeUpdate(sql, wsId);
 	}
 
 	private void heapSort(List<DoctorStats> list) {
@@ -736,6 +746,62 @@ public class ClinicManagerDAO {
 			}
 		} catch (SQLException e) {
 			System.err.println("Lỗi lấy danh sách khoa: " + e.getMessage());
+		}
+		return list;
+	}
+
+	// Lấy danh sách lịch làm việc
+	public static class WorkScheduleInfo {
+		public int wsId;
+		public int drId;
+		public String doctorName;
+		public int crId;
+		public String clinicRoomName;
+		public String wsDay;
+		public String wsStartTime;
+		public String wsEndTime;
+		public int wsMaxPatientSlot;
+
+		public WorkScheduleInfo(int wsId, int drId, String doctorName, int crId, String clinicRoomName,
+				String wsDay, String wsStartTime, String wsEndTime, int wsMaxPatientSlot) {
+			this.wsId = wsId;
+			this.drId = drId;
+			this.doctorName = doctorName;
+			this.crId = crId;
+			this.clinicRoomName = clinicRoomName;
+			this.wsDay = wsDay;
+			this.wsStartTime = wsStartTime;
+			this.wsEndTime = wsEndTime;
+			this.wsMaxPatientSlot = wsMaxPatientSlot;
+		}
+	}
+
+	public List<WorkScheduleInfo> getAllWorkSchedules() {
+		List<WorkScheduleInfo> list = new ArrayList<>();
+		String sql = "SELECT ws.WSId, ws.DrId, "
+				+ "CONCAT(d.DrLastName, ' ', ISNULL(d.DrMiddleName + ' ', ''), d.DrFirstName) AS DoctorName, "
+				+ "ws.CRId, cr.CRName, "
+				+ "CONVERT(VARCHAR, ws.WSDay, 23) AS WSDay, "
+				+ "CONVERT(VARCHAR, ws.WSStartime, 108) AS WSStartTime, "
+				+ "CONVERT(VARCHAR, ws.WSEndtime, 108) AS WSEndTime, "
+				+ "ws.WSMaxPatientSlot "
+				+ "FROM WORK_SCHEDULE ws "
+				+ "JOIN DOCTOR d ON ws.DrId = d.DrId "
+				+ "JOIN CLINIC_ROOM cr ON ws.CRId = cr.CRId "
+				+ "ORDER BY ws.WSDay DESC, ws.WSStartime";
+		try (Connection conn = DatabaseConnection.getConnection();
+				PreparedStatement pstmt = conn.prepareStatement(sql);
+				ResultSet rs = pstmt.executeQuery()) {
+			while (rs.next()) {
+				list.add(new WorkScheduleInfo(
+					rs.getInt("WSId"), rs.getInt("DrId"), rs.getString("DoctorName"),
+					rs.getInt("CRId"), rs.getString("CRName"),
+					rs.getString("WSDay"), rs.getString("WSStartTime"), rs.getString("WSEndTime"),
+					rs.getInt("WSMaxPatientSlot")
+				));
+			}
+		} catch (SQLException e) {
+			System.err.println("Lỗi lấy danh sách lịch làm việc: " + e.getMessage());
 		}
 		return list;
 	}

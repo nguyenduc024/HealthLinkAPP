@@ -72,13 +72,20 @@ export function PatientsHub() {
   };
 
   const submitAddPatient = async () => {
+    const trim = (s: string) => s.replace(/\s+/g, ' ').trim();
+    const trimmed = { ...addForm, firstName: trim(addForm.firstName), middleName: trim(addForm.middleName), lastName: trim(addForm.lastName), phone: trim(addForm.phone), address: trim(addForm.address), insurance: trim(addForm.insurance) };
+    if (!trimmed.firstName || !trimmed.lastName) {
+      setAddMsg({ type: "error", text: "Họ và tên không được để trống." });
+      return;
+    }
+    setAddForm(trimmed);
     setAddLoading(true);
     setAddMsg(null);
     try {
       const res = await fetch(`${API_BASE}/add-patient`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(addForm),
+        body: JSON.stringify(trimmed),
       });
       const json = (await res.json()) as { status: string; message: string };
       if (json.status === "success") {

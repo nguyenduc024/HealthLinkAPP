@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { Search, Plus, Filter, MoreVertical, Edit, Trash2, X, Loader2 } from "lucide-react";
+import { Search, Plus, Filter, MoreVertical, Edit, Trash2, X, Loader2, Calendar, Clock, Users } from "lucide-react";
 import { fetchApi, API_BASE, registerRefreshOnFocus } from "../lib/api";
 
 interface DoctorData {
@@ -21,6 +21,24 @@ interface DepartmentOption {
   dName: string;
 }
 
+interface ClinicRoomOption {
+  roomId: number;
+  roomName: string;
+  roomNumber: string;
+}
+
+interface WorkScheduleData {
+  wsId: number;
+  drId: number;
+  doctorName: string;
+  crId: number;
+  clinicRoomName: string;
+  wsDay: string;
+  wsStartTime: string;
+  wsEndTime: string;
+  wsMaxPatientSlot: number;
+}
+
 const EMPTY_FORM = {
   firstName: "",
   middleName: "",
@@ -34,6 +52,7 @@ const EMPTY_FORM = {
 };
 
 export function DoctorsDirectory() {
+  const [activeTab, setActiveTab] = useState<"doctors" | "schedule">("doctors");
   const [searchTerm, setSearchTerm] = useState("");
   const [doctors, setDoctors] = useState<DoctorData[]>([]);
   const [loading, setLoading] = useState(true);
@@ -45,6 +64,16 @@ export function DoctorsDirectory() {
   const [addLoading, setAddLoading] = useState(false);
   const [addMsg, setAddMsg] = useState<{ type: "success" | "error"; text: string } | null>(null);
 
+  // Work schedule state
+  const [schedules, setSchedules] = useState<WorkScheduleData[]>([]);
+  const [schedulesLoading, setSchedulesLoading] = useState(true);
+  const [showScheduleModal, setShowScheduleModal] = useState(false);
+  const [clinicRooms, setClinicRooms] = useState<ClinicRoomOption[]>([]);
+  const [scheduleForm, setScheduleForm] = useState({ drId: 0, crId: 0, wsDay: "", wsStartTime: "", wsEndTime: "" });
+  const [scheduleLoading, setScheduleLoading] = useState(false);
+  const [scheduleMsg, setScheduleMsg] = useState<{ type: "success" | "error"; text: string } | null>(null);
+  const [scheduleDeleteLoading, setScheduleDeleteLoading] = useState<number | null>(null);
+
   const loadDoctors = async () => {
     try {
       const data = await fetchApi<DoctorData[]>("/doctors");
@@ -52,6 +81,16 @@ export function DoctorsDirectory() {
     } catch {
     } finally {
       setLoading(false);
+    }
+  };
+
+  const loadSchedules = async () => {
+    try {
+      const data = await fetchApi<WorkScheduleData[]>("/work-schedules");
+      setSchedules(data);
+    } catch {
+    } finally {
+      setSchedulesLoading(false);
     }
   };
 
@@ -72,9 +111,21 @@ export function DoctorsDirectory() {
       }
     };
 
+    const loadSch = async () => {
+      try {
+        const data = await fetchApi<WorkScheduleData[]>("/work-schedules");
+        if (isActive) setSchedules(data);
+      } catch {
+      } finally {
+        if (isActive) setSchedulesLoading(false);
+      }
+    };
+
     void load();
+    void loadSch();
     const cleanupRefresh = registerRefreshOnFocus(() => {
       void load();
+      void loadSch();
     });
 
     return () => {
@@ -96,10 +147,13 @@ export function DoctorsDirectory() {
   };
 
   const submitAddDoctor = async () => {
-    if (!addForm.firstName.trim() || !addForm.lastName.trim()) {
+    const trim = (s: string) => s.replace(/\s+/g, ' ').trim();
+    const trimmed = { ...addForm, firstName: trim(addForm.firstName), middleName: trim(addForm.middleName), lastName: trim(addForm.lastName), phone: trim(addForm.phone), address: trim(addForm.address), specialty: trim(addForm.specialty) };
+    if (!trimmed.firstName || !trimmed.lastName) {
       setAddMsg({ type: "error", text: "Họ và tên không được để trống." });
       return;
     }
+    setAddForm(trimmed);
     setAddLoading(true);
     setAddMsg(null);
     try {
@@ -107,12 +161,12 @@ export function DoctorsDirectory() {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          firstName: addForm.firstName,
-          middleName: addForm.middleName || null,
-          lastName: addForm.lastName,
-          sex: addForm.sex || null,
-          phone: addForm.phone || null,
-          address: addForm.address || null,
+          firstName: trimmed.firstName,
+          middleName: trimmed.middleName || null,
+          lastName: trimmed.lastName,
+          sex: trimmed.sex || null,
+          phone: trimmed.phone || null,
+          address: trimmed.address || null,
           specialty: addForm.specialty || null,
           birthday: addForm.birthday || null,
           departmentId: addForm.departmentId || null,
@@ -134,6 +188,68 @@ export function DoctorsDirectory() {
     }
   };
 
+  const openScheduleModal = async () => {
+    setShowScheduleModal(true);
+    setScheduleMsg(null);
+    setScheduleForm({ drId: 0, crId: 0, wsDay: "", wsStartTime: "", wsEndTime: "" });
+    try {
+      const [rooms, depts] = await Promise.all([
+        fetchApi<ClinicRoomOption[]>("/clinic-rooms"),
+        fetchApi<DepartmentOption[]>("/departments"),
+      ]);
+      setClinicRooms(rooms);
+      if (departments.length === 0) setDepartments(depts);
+    } catch {
+      setScheduleMsg({ type: "error", text: "Không thể tải dữ liệu." });
+    }
+  };
+
+  const submitSchedule = async () => {
+    if (!scheduleForm.drId || !scheduleForm.crId || !scheduleForm.wsDay || !scheduleForm.wsStartTime || !scheduleForm.wsEndTime) {
+      setScheduleMsg({ type: "error", text: "Vui lòng điền đầy đủ thông tin." });
+      return;
+    }
+    if (scheduleForm.wsStartTime >= scheduleForm.wsEndTime) {
+      setScheduleMsg({ type: "error", text: "Giờ kết thúc phải sau giờ bắt đầu." });
+      return;
+    }
+    setScheduleLoading(true);
+    setScheduleMsg(null);
+    try {
+      const res = await fetch(`${API_BASE}/work-schedule/add`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(scheduleForm),
+      });
+      const data = await res.json() as { status: string; message: string };
+      if (data.status === "success") {
+        setScheduleMsg({ type: "success", text: data.message });
+        setScheduleForm({ drId: 0, crId: 0, wsDay: "", wsStartTime: "", wsEndTime: "" });
+        void loadSchedules();
+      } else {
+        setScheduleMsg({ type: "error", text: data.message });
+      }
+    } catch {
+      setScheduleMsg({ type: "error", text: "Lỗi kết nối server." });
+    } finally {
+      setScheduleLoading(false);
+    }
+  };
+
+  const deleteSchedule = async (wsId: number) => {
+    setScheduleDeleteLoading(wsId);
+    try {
+      const res = await fetch(`${API_BASE}/work-schedules/${wsId}`, { method: "DELETE" });
+      const data = await res.json() as { status: string; message: string };
+      if (data.status === "success") {
+        void loadSchedules();
+      }
+    } catch {
+    } finally {
+      setScheduleDeleteLoading(null);
+    }
+  };
+
   const filteredDoctors = doctors.filter(doc => 
     doc.fullName.toLowerCase().includes(searchTerm.toLowerCase()) || 
     (doc.specialty && doc.specialty.toLowerCase().includes(searchTerm.toLowerCase()))
@@ -141,20 +257,64 @@ export function DoctorsDirectory() {
 
   return (
     <div className="space-y-6 animate-in fade-in duration-500">
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-        <div>
-          <h1 className="text-2xl font-bold tracking-tight text-slate-900">Doctors Directory</h1>
-          <p className="text-sm text-slate-500 mt-1">Manage practitioners and view their details.</p>
+      {/* Header with tabs */}
+      <div className="flex flex-col gap-4">
+        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+          <div>
+            <h1 className="text-2xl font-bold tracking-tight text-slate-900">Quản lý bác sĩ</h1>
+            <p className="text-sm text-slate-500 mt-1">Danh sách bác sĩ và lịch làm việc.</p>
+          </div>
+          {activeTab === "doctors" ? (
+            <button
+              onClick={() => void openAddModal()}
+              className="flex items-center gap-2 px-4 py-2 bg-emerald-600 text-white text-sm font-medium rounded-lg hover:bg-emerald-700 transition-colors shadow-sm shadow-emerald-200"
+            >
+              <Plus className="w-4 h-4" />
+              Thêm bác sĩ
+            </button>
+          ) : (
+            <button
+              onClick={() => void openScheduleModal()}
+              className="flex items-center gap-2 px-4 py-2 bg-emerald-600 text-white text-sm font-medium rounded-lg hover:bg-emerald-700 transition-colors shadow-sm shadow-emerald-200"
+            >
+              <Plus className="w-4 h-4" />
+              Đặt lịch làm
+            </button>
+          )}
         </div>
-        <button
-          onClick={() => void openAddModal()}
-          className="flex items-center gap-2 px-4 py-2 bg-emerald-600 text-white text-sm font-medium rounded-lg hover:bg-emerald-700 transition-colors shadow-sm shadow-emerald-200"
-        >
-          <Plus className="w-4 h-4" />
-          Add Doctor
-        </button>
+
+        {/* Tab bar */}
+        <div className="flex gap-1 bg-slate-100 p-1 rounded-lg w-fit">
+          <button
+            onClick={() => setActiveTab("doctors")}
+            className={`flex items-center gap-2 px-4 py-2 text-sm font-medium rounded-md transition-all ${
+              activeTab === "doctors"
+                ? "bg-white text-slate-900 shadow-sm"
+                : "text-slate-500 hover:text-slate-700"
+            }`}
+          >
+            <Users className="w-4 h-4" />
+            Danh sách bác sĩ
+          </button>
+          <button
+            onClick={() => setActiveTab("schedule")}
+            className={`flex items-center gap-2 px-4 py-2 text-sm font-medium rounded-md transition-all ${
+              activeTab === "schedule"
+                ? "bg-white text-slate-900 shadow-sm"
+                : "text-slate-500 hover:text-slate-700"
+            }`}
+          >
+            <Calendar className="w-4 h-4" />
+            Lịch làm việc
+            {schedules.length > 0 && (
+              <span className="ml-1 px-1.5 py-0.5 text-xs font-semibold rounded-full bg-emerald-100 text-emerald-700">{schedules.length}</span>
+            )}
+          </button>
+        </div>
       </div>
 
+      {/* Doctors Tab */}
+      {activeTab === "doctors" && (
       <div className="bg-white rounded-xl shadow-[0_2px_10px_-4px_rgba(0,0,0,0.1)] border border-slate-100 overflow-hidden">
         <div className="p-4 border-b border-slate-100 flex flex-col sm:flex-row gap-4 justify-between">
           <div className="relative w-full sm:w-96">
@@ -252,6 +412,7 @@ export function DoctorsDirectory() {
           </div>
         </div>
       </div>
+      )}
 
       {/* Add Doctor Modal */}
       {showAddModal && (
@@ -385,6 +546,159 @@ export function DoctorsDirectory() {
               >
                 {addLoading && <Loader2 className="w-4 h-4 animate-spin" />}
                 {addLoading ? "Đang xử lý..." : "Thêm bác sĩ"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Work Schedule Section */}
+      {activeTab === "schedule" && (
+      <div className="bg-white rounded-xl shadow-[0_2px_10px_-4px_rgba(0,0,0,0.1)] border border-slate-100 overflow-hidden">
+        <div className="overflow-x-auto">
+          <table className="w-full text-left border-collapse">
+            <thead>
+              <tr className="bg-slate-50 text-slate-500 text-xs uppercase tracking-wider">
+                <th className="px-6 py-4 font-medium">Bác sĩ</th>
+                <th className="px-6 py-4 font-medium">Phòng khám</th>
+                <th className="px-6 py-4 font-medium">Ngày</th>
+                <th className="px-6 py-4 font-medium">Giờ bắt đầu</th>
+                <th className="px-6 py-4 font-medium">Giờ kết thúc</th>
+                <th className="px-6 py-4 font-medium">Số bệnh nhân tối đa</th>
+                <th className="px-6 py-4 font-medium text-right">Thao tác</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-slate-100">
+              {schedulesLoading ? (
+                <tr><td colSpan={7} className="px-6 py-12 text-center text-sm text-slate-500">Đang tải dữ liệu...</td></tr>
+              ) : schedules.length === 0 ? (
+                <tr><td colSpan={7} className="px-6 py-12 text-center text-sm text-slate-500">Chưa có lịch làm việc nào.</td></tr>
+              ) : schedules.map((s) => (
+                <tr key={s.wsId} className="hover:bg-slate-50/50 transition-colors group">
+                  <td className="px-6 py-4 whitespace-nowrap">
+                    <div className="flex items-center gap-2">
+                      <div className="w-7 h-7 rounded-full bg-emerald-100 text-emerald-700 flex items-center justify-center font-bold text-xs">
+                        {s.doctorName?.charAt(0) || '?'}
+                      </div>
+                      <span className="text-sm font-medium text-slate-900">{s.doctorName}</span>
+                    </div>
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-600">{s.clinicRoomName}</td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-600">{s.wsDay}</td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-600">
+                    <span className="inline-flex items-center gap-1"><Clock className="w-3.5 h-3.5 text-slate-400" />{s.wsStartTime?.slice(0, 5)}</span>
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-600">
+                    <span className="inline-flex items-center gap-1"><Clock className="w-3.5 h-3.5 text-slate-400" />{s.wsEndTime?.slice(0, 5)}</span>
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap">
+                    <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-50 text-blue-700 border border-blue-200">
+                      {s.wsMaxPatientSlot} bệnh nhân
+                    </span>
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap text-right">
+                    <button
+                      onClick={() => void deleteSchedule(s.wsId)}
+                      disabled={scheduleDeleteLoading === s.wsId}
+                      className="p-1.5 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-md transition-colors"
+                    >
+                      {scheduleDeleteLoading === s.wsId ? <Loader2 className="w-4 h-4 animate-spin" /> : <Trash2 className="w-4 h-4" />}
+                    </button>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </div>
+      )}
+
+      {/* Add Schedule Modal */}
+      {showScheduleModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm animate-in fade-in duration-200" onClick={() => setShowScheduleModal(false)}>
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-lg mx-4 max-h-[90vh] overflow-y-auto animate-in zoom-in-95 duration-200" onClick={e => e.stopPropagation()}>
+            <div className="flex items-center justify-between p-6 pb-4 border-b border-slate-100">
+              <h2 className="text-lg font-bold text-slate-900">Đặt lịch làm việc</h2>
+              <button onClick={() => setShowScheduleModal(false)} className="p-1 rounded-lg hover:bg-slate-100 transition-colors">
+                <X className="w-5 h-5 text-slate-400" />
+              </button>
+            </div>
+            <div className="p-6 space-y-4">
+              {scheduleMsg && (
+                <div className={`p-3 rounded-lg text-sm font-medium ${scheduleMsg.type === "success" ? "bg-emerald-50 text-emerald-700 border border-emerald-200" : "bg-red-50 text-red-700 border border-red-200"}`}>
+                  {scheduleMsg.text}
+                </div>
+              )}
+
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-1.5">Bác sĩ <span className="text-red-500">*</span></label>
+                <select
+                  className="w-full px-3 py-2.5 rounded-lg border border-slate-200 bg-white text-sm focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none"
+                  value={scheduleForm.drId}
+                  onChange={e => setScheduleForm(f => ({ ...f, drId: Number(e.target.value) }))}
+                >
+                  <option value={0}>-- Chọn bác sĩ --</option>
+                  {doctors.map(d => <option key={d.doctorId} value={d.doctorId}>{d.fullName}</option>)}
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-1.5">Phòng khám <span className="text-red-500">*</span></label>
+                <select
+                  className="w-full px-3 py-2.5 rounded-lg border border-slate-200 bg-white text-sm focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none"
+                  value={scheduleForm.crId}
+                  onChange={e => setScheduleForm(f => ({ ...f, crId: Number(e.target.value) }))}
+                >
+                  <option value={0}>-- Chọn phòng khám --</option>
+                  {clinicRooms.map(r => <option key={r.roomId} value={r.roomId}>{r.roomName} ({r.roomNumber})</option>)}
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-1.5">Ngày làm việc <span className="text-red-500">*</span></label>
+                <input
+                  type="date"
+                  className="w-full px-3 py-2.5 rounded-lg border border-slate-200 bg-white text-sm focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none"
+                  value={scheduleForm.wsDay}
+                  onChange={e => setScheduleForm(f => ({ ...f, wsDay: e.target.value }))}
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 mb-1.5">Giờ bắt đầu <span className="text-red-500">*</span></label>
+                  <input
+                    type="time"
+                    className="w-full px-3 py-2.5 rounded-lg border border-slate-200 bg-white text-sm focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none"
+                    value={scheduleForm.wsStartTime}
+                    onChange={e => setScheduleForm(f => ({ ...f, wsStartTime: e.target.value }))}
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 mb-1.5">Giờ kết thúc <span className="text-red-500">*</span></label>
+                  <input
+                    type="time"
+                    className="w-full px-3 py-2.5 rounded-lg border border-slate-200 bg-white text-sm focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none"
+                    value={scheduleForm.wsEndTime}
+                    onChange={e => setScheduleForm(f => ({ ...f, wsEndTime: e.target.value }))}
+                  />
+                </div>
+              </div>
+            </div>
+            <div className="flex gap-3 p-6 pt-4 border-t border-slate-100">
+              <button
+                onClick={() => setShowScheduleModal(false)}
+                className="flex-1 px-4 py-2.5 text-sm font-medium text-slate-700 bg-white border border-slate-200 rounded-lg hover:bg-slate-50 transition-colors"
+              >
+                Hủy
+              </button>
+              <button
+                onClick={() => void submitSchedule()}
+                disabled={scheduleLoading}
+                className="flex-1 px-4 py-2.5 text-sm font-medium text-white bg-emerald-600 rounded-lg hover:bg-emerald-700 transition-colors disabled:opacity-50 flex items-center justify-center gap-2"
+              >
+                {scheduleLoading && <Loader2 className="w-4 h-4 animate-spin" />}
+                {scheduleLoading ? "Đang xử lý..." : "Thêm lịch"}
               </button>
             </div>
           </div>
