@@ -90,10 +90,20 @@ export function Appointments() {
   const [bookLoading, setBookLoading] = useState(false);
   const [bookMsg, setBookMsg] = useState<{ type: "success" | "error"; text: string } | null>(null);
 
+  // Autocomplete search text for booking fields
+  const [bookDoctorText, setBookDoctorText] = useState("");
+  const [bookPatientText, setBookPatientText] = useState("");
+  const [bookRoomText, setBookRoomText] = useState("");
+  const [bookFocus, setBookFocus] = useState<"doctor" | "patient" | "room" | null>(null);
+
   const openBookingDialog = async () => {
     setShowBooking(true);
     setBookMsg(null);
     setBookForm({ doctorId: 0, patientId: 0, clinicRoomId: 0, reason: "", dateTime: "" });
+    setBookDoctorText("");
+    setBookPatientText("");
+    setBookRoomText("");
+    setBookFocus(null);
     try {
       const [d, p, r] = await Promise.all([
         fetchApi<DoctorOption[]>("/doctors"),
@@ -865,40 +875,154 @@ export function Appointments() {
                 </div>
               )}
 
-              <div>
+              <div className="relative">
                 <label className="block text-sm font-medium text-slate-700 mb-1.5">Bác sĩ <span className="text-red-500">*</span></label>
-                <select
-                  className="w-full px-3 py-2.5 rounded-lg border border-slate-200 bg-white text-sm focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none"
-                  value={bookForm.doctorId}
-                  onChange={e => setBookForm(f => ({ ...f, doctorId: Number(e.target.value) }))}
-                >
-                  <option value={0}>-- Chọn bác sĩ --</option>
-                  {doctorOptions.map(d => <option key={d.doctorId} value={d.doctorId}>{d.fullName}</option>)}
-                </select>
+                <div className="relative">
+                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+                  <input
+                    type="text"
+                    placeholder="Nhập tên bác sĩ..."
+                    className="w-full pl-9 pr-8 py-2.5 rounded-lg border border-slate-200 bg-white text-sm focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none transition-all"
+                    value={bookDoctorText}
+                    onChange={e => {
+                      setBookDoctorText(e.target.value);
+                      if (bookForm.doctorId) setBookForm(f => ({ ...f, doctorId: 0 }));
+                    }}
+                    onFocus={() => setBookFocus("doctor")}
+                    onBlur={() => setTimeout(() => { if (bookFocus === "doctor") setBookFocus(null); }, 150)}
+                  />
+                  {bookForm.doctorId > 0 && (
+                    <button
+                      type="button"
+                      className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
+                      onClick={() => { setBookDoctorText(""); setBookForm(f => ({ ...f, doctorId: 0 })); }}
+                    ><X className="w-4 h-4" /></button>
+                  )}
+                </div>
+                {bookFocus === "doctor" && !bookForm.doctorId && (
+                  <div className="absolute z-10 w-full mt-1 bg-white border border-slate-200 rounded-lg shadow-lg max-h-44 overflow-y-auto">
+                    {doctorOptions
+                      .filter(d => d.fullName.toLowerCase().includes(bookDoctorText.toLowerCase()))
+                      .length === 0 ? (
+                        <div className="px-3 py-2.5 text-sm text-slate-400">Không tìm thấy bác sĩ</div>
+                      ) : doctorOptions
+                      .filter(d => d.fullName.toLowerCase().includes(bookDoctorText.toLowerCase()))
+                      .map(d => (
+                        <button
+                          key={d.doctorId}
+                          type="button"
+                          className="w-full text-left px-3 py-2 text-sm hover:bg-emerald-50 hover:text-emerald-700 transition-colors"
+                          onMouseDown={e => e.preventDefault()}
+                          onClick={() => {
+                            setBookForm(f => ({ ...f, doctorId: d.doctorId }));
+                            setBookDoctorText(d.fullName);
+                            setBookFocus(null);
+                          }}
+                        >{d.fullName}</button>
+                      ))
+                    }
+                  </div>
+                )}
               </div>
 
-              <div>
+              <div className="relative">
                 <label className="block text-sm font-medium text-slate-700 mb-1.5">Bệnh nhân <span className="text-red-500">*</span></label>
-                <select
-                  className="w-full px-3 py-2.5 rounded-lg border border-slate-200 bg-white text-sm focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none"
-                  value={bookForm.patientId}
-                  onChange={e => setBookForm(f => ({ ...f, patientId: Number(e.target.value) }))}
-                >
-                  <option value={0}>-- Chọn bệnh nhân --</option>
-                  {patientOptions.map(p => <option key={p.patientId} value={p.patientId}>{p.fullName}</option>)}
-                </select>
+                <div className="relative">
+                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+                  <input
+                    type="text"
+                    placeholder="Nhập tên bệnh nhân..."
+                    className="w-full pl-9 pr-8 py-2.5 rounded-lg border border-slate-200 bg-white text-sm focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none transition-all"
+                    value={bookPatientText}
+                    onChange={e => {
+                      setBookPatientText(e.target.value);
+                      if (bookForm.patientId) setBookForm(f => ({ ...f, patientId: 0 }));
+                    }}
+                    onFocus={() => setBookFocus("patient")}
+                    onBlur={() => setTimeout(() => { if (bookFocus === "patient") setBookFocus(null); }, 150)}
+                  />
+                  {bookForm.patientId > 0 && (
+                    <button
+                      type="button"
+                      className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
+                      onClick={() => { setBookPatientText(""); setBookForm(f => ({ ...f, patientId: 0 })); }}
+                    ><X className="w-4 h-4" /></button>
+                  )}
+                </div>
+                {bookFocus === "patient" && !bookForm.patientId && (
+                  <div className="absolute z-10 w-full mt-1 bg-white border border-slate-200 rounded-lg shadow-lg max-h-44 overflow-y-auto">
+                    {patientOptions
+                      .filter(p => p.fullName.toLowerCase().includes(bookPatientText.toLowerCase()))
+                      .length === 0 ? (
+                        <div className="px-3 py-2.5 text-sm text-slate-400">Không tìm thấy bệnh nhân</div>
+                      ) : patientOptions
+                      .filter(p => p.fullName.toLowerCase().includes(bookPatientText.toLowerCase()))
+                      .map(p => (
+                        <button
+                          key={p.patientId}
+                          type="button"
+                          className="w-full text-left px-3 py-2 text-sm hover:bg-emerald-50 hover:text-emerald-700 transition-colors"
+                          onMouseDown={e => e.preventDefault()}
+                          onClick={() => {
+                            setBookForm(f => ({ ...f, patientId: p.patientId }));
+                            setBookPatientText(p.fullName);
+                            setBookFocus(null);
+                          }}
+                        >{p.fullName}</button>
+                      ))
+                    }
+                  </div>
+                )}
               </div>
 
-              <div>
+              <div className="relative">
                 <label className="block text-sm font-medium text-slate-700 mb-1.5">Phòng khám <span className="text-red-500">*</span></label>
-                <select
-                  className="w-full px-3 py-2.5 rounded-lg border border-slate-200 bg-white text-sm focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none"
-                  value={bookForm.clinicRoomId}
-                  onChange={e => setBookForm(f => ({ ...f, clinicRoomId: Number(e.target.value) }))}
-                >
-                  <option value={0}>-- Chọn phòng khám --</option>
-                  {roomOptions.map(r => <option key={r.roomId} value={r.roomId}>{r.roomName} - {r.roomNumber}</option>)}
-                </select>
+                <div className="relative">
+                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+                  <input
+                    type="text"
+                    placeholder="Nhập tên phòng khám..."
+                    className="w-full pl-9 pr-8 py-2.5 rounded-lg border border-slate-200 bg-white text-sm focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none transition-all"
+                    value={bookRoomText}
+                    onChange={e => {
+                      setBookRoomText(e.target.value);
+                      if (bookForm.clinicRoomId) setBookForm(f => ({ ...f, clinicRoomId: 0 }));
+                    }}
+                    onFocus={() => setBookFocus("room")}
+                    onBlur={() => setTimeout(() => { if (bookFocus === "room") setBookFocus(null); }, 150)}
+                  />
+                  {bookForm.clinicRoomId > 0 && (
+                    <button
+                      type="button"
+                      className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
+                      onClick={() => { setBookRoomText(""); setBookForm(f => ({ ...f, clinicRoomId: 0 })); }}
+                    ><X className="w-4 h-4" /></button>
+                  )}
+                </div>
+                {bookFocus === "room" && !bookForm.clinicRoomId && (
+                  <div className="absolute z-10 w-full mt-1 bg-white border border-slate-200 rounded-lg shadow-lg max-h-44 overflow-y-auto">
+                    {roomOptions
+                      .filter(r => `${r.roomName} ${r.roomNumber}`.toLowerCase().includes(bookRoomText.toLowerCase()))
+                      .length === 0 ? (
+                        <div className="px-3 py-2.5 text-sm text-slate-400">Không tìm thấy phòng khám</div>
+                      ) : roomOptions
+                      .filter(r => `${r.roomName} ${r.roomNumber}`.toLowerCase().includes(bookRoomText.toLowerCase()))
+                      .map(r => (
+                        <button
+                          key={r.roomId}
+                          type="button"
+                          className="w-full text-left px-3 py-2 text-sm hover:bg-emerald-50 hover:text-emerald-700 transition-colors"
+                          onMouseDown={e => e.preventDefault()}
+                          onClick={() => {
+                            setBookForm(f => ({ ...f, clinicRoomId: r.roomId }));
+                            setBookRoomText(`${r.roomName} - ${r.roomNumber}`);
+                            setBookFocus(null);
+                          }}
+                        >{r.roomName} - {r.roomNumber}</button>
+                      ))
+                    }
+                  </div>
+                )}
               </div>
 
               <div>
