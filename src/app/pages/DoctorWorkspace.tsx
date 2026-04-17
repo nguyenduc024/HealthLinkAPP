@@ -1,4 +1,7 @@
 import { useState, useEffect } from "react";
+import { Pagination } from "../components/Pagination";
+
+const PAGE_SIZE = 20;
 import {
   FileText,
   Pill,
@@ -136,6 +139,12 @@ export function DoctorWorkspace() {
       p.patientName.toLowerCase().includes(searchQuery.toLowerCase()) ||
       p.doctorName.toLowerCase().includes(searchQuery.toLowerCase())
   );
+
+  const [queuePage, setQueuePage] = useState(1);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  useEffect(() => { setQueuePage(1); }, [searchQuery]);
+  const queueTotalPages = Math.max(1, Math.ceil(filteredQueue.length / PAGE_SIZE));
+  const pagedQueue = filteredQueue.slice((queuePage - 1) * PAGE_SIZE, queuePage * PAGE_SIZE);
 
   const filteredMedicines = medicines.filter(
     (m) =>
@@ -309,7 +318,7 @@ export function DoctorWorkspace() {
             ) : filteredQueue.length === 0 ? (
               <div className="p-4 text-center text-sm text-slate-400">Không có lịch hẹn nào.</div>
             ) : (
-              filteredQueue.map((patient, idx) => {
+              pagedQueue.map((patient, idx) => {
                 const realIdx = examQueue.indexOf(patient);
                 return (
                   <div
@@ -348,6 +357,13 @@ export function DoctorWorkspace() {
               })
             )}
           </div>
+          <Pagination
+            currentPage={queuePage}
+            totalPages={queueTotalPages}
+            totalItems={filteredQueue.length}
+            pageSize={PAGE_SIZE}
+            onPageChange={setQueuePage}
+          />
         </div>
 
         {/* Workspace Main Area */}
@@ -555,10 +571,12 @@ export function DoctorWorkspace() {
                         </div>
                       </div>
                     ))}
-
-                    {/* Total */}
-                    <div className="flex justify-end items-center gap-3 pt-3 border-t border-slate-100">
-                      <span className="text-sm text-slate-500">Tổng tiền thuốc:</span>
+                  </div>
+                )}
+                {prescriptionItems.length > 0 && (
+                  <div className="flex justify-end">
+                    <div className="inline-flex items-center gap-3 px-4 py-2.5 bg-emerald-50 border border-emerald-200 rounded-lg">
+                      <span className="text-sm font-medium text-slate-700">Tổng tiền đơn thuốc:</span>
                       <span className="text-lg font-bold text-emerald-700">
                         {totalPrescriptionPrice.toLocaleString("vi-VN")}đ
                       </span>

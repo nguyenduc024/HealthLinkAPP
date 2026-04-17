@@ -1,4 +1,7 @@
 import { useState, useEffect, useCallback } from "react";
+import { Pagination } from "../components/Pagination";
+
+const PAGE_SIZE = 20;
 import {
   Receipt,
   Search,
@@ -179,6 +182,12 @@ export function Billing() {
     return matchSearch && matchStatus;
   });
 
+  const [billingPage, setBillingPage] = useState(1);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  useEffect(() => { setBillingPage(1); }, [searchTerm, filterStatus]);
+  const billingTotalPages = Math.max(1, Math.ceil(filteredInvoices.length / PAGE_SIZE));
+  const pagedInvoices = filteredInvoices.slice((billingPage - 1) * PAGE_SIZE, billingPage * PAGE_SIZE);
+
   return (
     <div className="space-y-6 animate-in fade-in duration-500">
       {/* Toast */}
@@ -288,7 +297,7 @@ export function Billing() {
                   <td colSpan={6} className="px-6 py-12 text-center text-sm text-slate-400">Không có hóa đơn nào.</td>
                 </tr>
               ) : (
-                filteredInvoices.map((invoice) => (
+                pagedInvoices.map((invoice) => (
                   <tr key={invoice.invoiceId} className="hover:bg-slate-50/50 transition-colors group">
                     <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-slate-900">
                       HD-{String(invoice.invoiceId).padStart(3, "0")}
@@ -434,6 +443,13 @@ export function Billing() {
                         </tbody>
                       </table>
                     </div>
+                    <Pagination
+                      currentPage={billingPage}
+                      totalPages={billingTotalPages}
+                      totalItems={filteredInvoices.length}
+                      pageSize={PAGE_SIZE}
+                      onPageChange={setBillingPage}
+                    />
                   </div>
                 )}
 

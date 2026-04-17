@@ -19,6 +19,9 @@ import {
   DoorOpen
 } from "lucide-react";
 import { fetchApi, API_BASE, registerRefreshOnFocus } from "../lib/api";
+import { Pagination } from "../components/Pagination";
+
+const PAGE_SIZE = 20;
 
 interface AppointmentData {
   appointmentId: number;
@@ -513,6 +516,12 @@ export function Appointments() {
     return true;
   });
 
+  const [apptPage, setApptPage] = useState(1);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  useEffect(() => { setApptPage(1); }, [selectedDoctor, statusFilter, selectedDate, searchQuery]);
+  const apptTotalPages = Math.max(1, Math.ceil(filteredAppointments.length / PAGE_SIZE));
+  const pagedAppointments = filteredAppointments.slice((apptPage - 1) * PAGE_SIZE, apptPage * PAGE_SIZE);
+
   const getStatusColor = (status: string) => {
     switch(status) {
       case 'Đã xác nhận': return 'bg-emerald-50 text-emerald-700 border-emerald-200';
@@ -815,7 +824,7 @@ export function Appointments() {
                   </button>
                 )}
               </div>
-            ) : filteredAppointments.map((apt) => (
+            ) : pagedAppointments.map((apt) => (
               <div key={apt.appointmentId} className="group flex flex-col sm:flex-row gap-4 p-4 rounded-xl border border-slate-100 hover:border-emerald-500 hover:shadow-md transition-all bg-white relative">
                 
                 {/* Time Indicator */}
@@ -877,6 +886,13 @@ export function Appointments() {
               </div>
             ))}
           </div>
+          <Pagination
+            currentPage={apptPage}
+            totalPages={apptTotalPages}
+            totalItems={filteredAppointments.length}
+            pageSize={PAGE_SIZE}
+            onPageChange={setApptPage}
+          />
         </div>
       </div>
 
@@ -932,11 +948,9 @@ export function Appointments() {
         setWsSearchDoctor={setWsSearchDoctor}
         onClose={() => setShowWorkSchedule(false)}
       />}
-
-      {/* ====== DOCTOR RANKING MODAL (Heap Sort) ====== */}
       {showDoctorRanking && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm" onClick={() => setShowDoctorRanking(false)}>
-          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-lg max-h-[85vh] overflow-hidden mx-4 animate-in fade-in zoom-in-95 duration-200" onClick={(e) => e.stopPropagation()}>
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-2xl mx-4 max-h-[85vh] overflow-hidden animate-in fade-in zoom-in-95 duration-200" onClick={e => e.stopPropagation()}>
             {/* Header */}
             <div className="p-6 border-b border-slate-100 flex justify-between items-center bg-gradient-to-r from-emerald-50 to-blue-50">
               <div className="flex items-center gap-3">

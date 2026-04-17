@@ -1,6 +1,9 @@
 import { useState, useEffect } from "react";
 import { Search, Plus, Filter, MoreVertical, Edit, Trash2, X, Loader2, Calendar, Clock, Users } from "lucide-react";
 import { fetchApi, API_BASE, registerRefreshOnFocus } from "../lib/api";
+import { Pagination } from "../components/Pagination";
+
+const PAGE_SIZE = 20;
 
 interface DoctorData {
   doctorId: number;
@@ -75,6 +78,10 @@ export function DoctorsDirectory() {
   const [scheduleLoading, setScheduleLoading] = useState(false);
   const [scheduleMsg, setScheduleMsg] = useState<{ type: "success" | "error"; text: string } | null>(null);
   const [scheduleDeleteLoading, setScheduleDeleteLoading] = useState<number | null>(null);
+
+  // Pagination
+  const [doctorPage, setDoctorPage] = useState(1);
+  const [schedulePage, setSchedulePage] = useState(1);
 
   const loadDoctors = async () => {
     try {
@@ -269,6 +276,14 @@ export function DoctorsDirectory() {
     return matchesSearch && matchesDepartment && matchesSex;
   });
 
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  useEffect(() => { setDoctorPage(1); }, [searchTerm, selectedDepartment, selectedSex]);
+
+  const doctorTotalPages = Math.max(1, Math.ceil(filteredDoctors.length / PAGE_SIZE));
+  const pagedDoctors = filteredDoctors.slice((doctorPage - 1) * PAGE_SIZE, doctorPage * PAGE_SIZE);
+  const scheduleTotalPages = Math.max(1, Math.ceil(schedules.length / PAGE_SIZE));
+  const pagedSchedules = schedules.slice((schedulePage - 1) * PAGE_SIZE, schedulePage * PAGE_SIZE);
+
   return (
     <div className="space-y-6 animate-in fade-in duration-500">
       {/* Header with tabs */}
@@ -394,7 +409,7 @@ export function DoctorsDirectory() {
             <tbody className="divide-y divide-slate-100">
               {loading ? (
                 <tr><td colSpan={6} className="px-6 py-12 text-center text-sm text-slate-500">Đang tải dữ liệu...</td></tr>
-              ) : filteredDoctors.map((doc) => (
+              ) : pagedDoctors.map((doc) => (
                 <tr key={doc.doctorId} className="hover:bg-slate-50/50 transition-colors group">
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-500 font-medium">
                     BS-{String(doc.doctorId).padStart(3, '0')}
@@ -448,15 +463,13 @@ export function DoctorsDirectory() {
           )}
         </div>
         
-        <div className="p-4 border-t border-slate-100 bg-slate-50 flex items-center justify-between text-sm text-slate-500">
-          <div>Hiển thị 1 đến {filteredDoctors.length} trong {doctors.length} bác sĩ</div>
-          <div className="flex gap-1">
-            <button className="px-3 py-1 bg-white border border-slate-200 rounded-md hover:bg-slate-50 disabled:opacity-50">Trước</button>
-            <button className="px-3 py-1 bg-emerald-600 text-white rounded-md">1</button>
-            <button className="px-3 py-1 bg-white border border-slate-200 rounded-md hover:bg-slate-50">2</button>
-            <button className="px-3 py-1 bg-white border border-slate-200 rounded-md hover:bg-slate-50 disabled:opacity-50">Sau</button>
-          </div>
-        </div>
+        <Pagination
+          currentPage={doctorPage}
+          totalPages={doctorTotalPages}
+          totalItems={filteredDoctors.length}
+          pageSize={PAGE_SIZE}
+          onPageChange={setDoctorPage}
+        />
       </div>
       )}
 
@@ -619,7 +632,7 @@ export function DoctorsDirectory() {
                 <tr><td colSpan={7} className="px-6 py-12 text-center text-sm text-slate-500">Đang tải dữ liệu...</td></tr>
               ) : schedules.length === 0 ? (
                 <tr><td colSpan={7} className="px-6 py-12 text-center text-sm text-slate-500">Chưa có lịch làm việc nào.</td></tr>
-              ) : schedules.map((s) => (
+              ) : pagedSchedules.map((s) => (
                 <tr key={s.wsId} className="hover:bg-slate-50/50 transition-colors group">
                   <td className="px-6 py-4 whitespace-nowrap">
                     <div className="flex items-center gap-2">
@@ -656,6 +669,13 @@ export function DoctorsDirectory() {
             </tbody>
           </table>
         </div>
+        <Pagination
+          currentPage={schedulePage}
+          totalPages={scheduleTotalPages}
+          totalItems={schedules.length}
+          pageSize={PAGE_SIZE}
+          onPageChange={setSchedulePage}
+        />
       </div>
       )}
 

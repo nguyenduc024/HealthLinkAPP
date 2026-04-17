@@ -1,6 +1,9 @@
 import { useState, useEffect } from "react";
 import { Search, Plus, Filter, User, Phone, Calendar, X, Loader2, Stethoscope, MapPin, ShieldCheck } from "lucide-react";
 import { fetchApi, API_BASE, registerRefreshOnFocus } from "../lib/api";
+import { Pagination } from "../components/Pagination";
+
+const PAGE_SIZE = 20;
 
 interface DoctorOption {
   doctorId: number;
@@ -195,6 +198,12 @@ export function PatientsHub() {
     return matchesSearch && matchesSex && matchesInsurance;
   });
 
+  const [patientPage, setPatientPage] = useState(1);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  useEffect(() => { setPatientPage(1); }, [searchTerm, selectedSex, selectedInsurance]);
+  const patientTotalPages = Math.max(1, Math.ceil(filteredPatients.length / PAGE_SIZE));
+  const pagedPatients = filteredPatients.slice((patientPage - 1) * PAGE_SIZE, patientPage * PAGE_SIZE);
+
   return (
     <div className="space-y-6 animate-in fade-in duration-500">
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
@@ -322,7 +331,7 @@ export function PatientsHub() {
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 p-4">
           {loading ? (
             <div className="col-span-full p-12 text-center text-sm text-slate-500">Đang tải dữ liệu...</div>
-          ) : filteredPatients.map((patient) => (
+          ) : pagedPatients.map((patient) => (
             <div key={patient.patientId} className="group relative bg-white border border-slate-200 rounded-xl p-5 hover:border-emerald-500 hover:shadow-md transition-all cursor-pointer">
               <div className="absolute top-4 right-4">
                 <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-semibold bg-emerald-50 text-emerald-700">
@@ -382,6 +391,13 @@ export function PatientsHub() {
             </div>
           )}
         </div>
+        <Pagination
+          currentPage={patientPage}
+          totalPages={patientTotalPages}
+          totalItems={filteredPatients.length}
+          pageSize={PAGE_SIZE}
+          onPageChange={setPatientPage}
+        />
       </div>
 
       {/* Profile Modal */}
