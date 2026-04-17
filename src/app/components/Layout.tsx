@@ -176,22 +176,20 @@ export function AppLayout() {
         {/* Contact Footer Information */}
         <div className="p-4 border-t border-slate-100 bg-slate-50/50">
           <h4 className="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-3">
-            Liên hệ hỗ trợ
+            Thông tin nhóm
           </h4>
           <div className="text-xs text-slate-600 space-y-2">
             <p className="flex justify-between">
-              <span className="text-slate-400">FB:</span>
-              <a href="https://facebook.com/nguyenduc.024" className="hover:text-emerald-600 transition-colors">nguyenduc.024</a>
+              <span className="text-slate-400">Tên nhóm:</span>
+              <span>8</span>
             </p>
             <p className="flex justify-between">
-              <span className="text-slate-400">Phone:</span>
-              <a href="tel:0966432687" className="hover:text-emerald-600 transition-colors">0966432687</a>
+              <span className="text-slate-400">Lớp:</span>
+              <span>ITS326_252_1_D01</span>
             </p>
             <p className="flex justify-between">
-              <span className="text-slate-400">Email:</span>
-              <a href="mailto:nguyenduc.personal@gmail.com" className="hover:text-emerald-600 transition-colors truncate ml-2">
-                nguyenduc.personal@gmail.com
-              </a>
+              <span className="text-slate-400">Giảng viên:</span>
+              <span>Thầy Bùi Hữu Đồng</span>
             </p>
           </div>
         </div>

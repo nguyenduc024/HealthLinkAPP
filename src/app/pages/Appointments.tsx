@@ -71,6 +71,16 @@ export function Appointments() {
   const [doctorRanking, setDoctorRanking] = useState<DoctorRankingItem[]>([]);
   const [rankingLoading, setRankingLoading] = useState(false);
 
+  // Calendar state
+  const [calendarMonth, setCalendarMonth] = useState(new Date().getMonth());
+  const [calendarYear, setCalendarYear] = useState(new Date().getFullYear());
+  const [selectedDate, setSelectedDate] = useState<string | null>(null);
+
+  // Filter state
+  const [showFilterPanel, setShowFilterPanel] = useState(false);
+  const [statusFilter, setStatusFilter] = useState<string>("Tất cả");
+  const [searchQuery, setSearchQuery] = useState("");
+
   // Book appointment state
   const [showBooking, setShowBooking] = useState(false);
   const [doctorOptions, setDoctorOptions] = useState<DoctorOption[]>([]);
@@ -260,6 +270,72 @@ export function Appointments() {
     'Đã hủy': 'Cancelled',
   };
 
+  const allStatuses = ['Tất cả', 'Chờ xác nhận', 'Đã xác nhận', 'Hoàn thành', 'Đã hủy'];
+
+  // Calendar helpers
+  const monthNames = ['Tháng 1', 'Tháng 2', 'Tháng 3', 'Tháng 4', 'Tháng 5', 'Tháng 6', 'Tháng 7', 'Tháng 8', 'Tháng 9', 'Tháng 10', 'Tháng 11', 'Tháng 12'];
+  const dayNames = ['CN', 'T2', 'T3', 'T4', 'T5', 'T6', 'T7'];
+
+  const getDaysInMonth = (month: number, year: number) => new Date(year, month + 1, 0).getDate();
+  const getFirstDayOfMonth = (month: number, year: number) => new Date(year, month, 1).getDay();
+
+  const appointmentDateCounts = (() => {
+    const counts: Record<string, number> = {};
+    appointments.forEach(apt => {
+      try {
+        const d = new Date(apt.dateTime);
+        const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+        counts[key] = (counts[key] || 0) + 1;
+      } catch {}
+    });
+    return counts;
+  })();
+
+  const goToPrevMonth = () => {
+    if (calendarMonth === 0) { setCalendarMonth(11); setCalendarYear(y => y - 1); }
+    else setCalendarMonth(m => m - 1);
+  };
+
+  const goToNextMonth = () => {
+    if (calendarMonth === 11) { setCalendarMonth(0); setCalendarYear(y => y + 1); }
+    else setCalendarMonth(m => m + 1);
+  };
+
+  const goToToday = () => {
+    const today = new Date();
+    setCalendarMonth(today.getMonth());
+    setCalendarYear(today.getFullYear());
+    setSelectedDate(null);
+  };
+
+  const handleDateClick = (day: number) => {
+    const key = `${calendarYear}-${String(calendarMonth + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+    setSelectedDate(prev => prev === key ? null : key);
+  };
+
+  const todayKey = (() => {
+    const t = new Date();
+    return `${t.getFullYear()}-${String(t.getMonth() + 1).padStart(2, '0')}-${String(t.getDate()).padStart(2, '0')}`;
+  })();
+
+  // Combined filter logic
+  const filteredAppointments = appointments.filter(apt => {
+    if (selectedDoctor !== "Tất cả" && apt.doctorName !== selectedDoctor) return false;
+    if (statusFilter !== "Tất cả" && apt.status !== statusFilter) return false;
+    if (selectedDate) {
+      try {
+        const d = new Date(apt.dateTime);
+        const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+        if (key !== selectedDate) return false;
+      } catch { return false; }
+    }
+    if (searchQuery.trim()) {
+      const q = searchQuery.toLowerCase();
+      if (!apt.patientName.toLowerCase().includes(q) && !apt.doctorName.toLowerCase().includes(q) && !(apt.reason || '').toLowerCase().includes(q)) return false;
+    }
+    return true;
+  });
+
   const getStatusColor = (status: string) => {
     switch(status) {
       case 'Đã xác nhận': return 'bg-emerald-50 text-emerald-700 border-emerald-200';
@@ -325,32 +401,68 @@ export function Appointments() {
       <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
         {/* Calendar Sidebar */}
         <div className="lg:col-span-1 bg-white rounded-xl shadow-[0_2px_10px_-4px_rgba(0,0,0,0.1)] border border-slate-100 p-5 flex flex-col">
-          <div className="flex items-center justify-between mb-6">
-            <h3 className="font-semibold text-slate-900">October 2023</h3>
+          <div className="flex items-center justify-between mb-4">
+            <h3 className="font-semibold text-slate-900">{monthNames[calendarMonth]} {calendarYear}</h3>
             <div className="flex gap-1">
-              <button className="p-1 hover:bg-slate-50 rounded text-slate-500"><ChevronLeft className="w-5 h-5"/></button>
-              <button className="p-1 hover:bg-slate-50 rounded text-slate-500"><ChevronRight className="w-5 h-5"/></button>
+              <button onClick={goToPrevMonth} className="p-1 hover:bg-slate-50 rounded text-slate-500"><ChevronLeft className="w-5 h-5"/></button>
+              <button onClick={goToToday} className="px-2 py-1 hover:bg-emerald-50 rounded text-xs font-medium text-emerald-600">Nay</button>
+              <button onClick={goToNextMonth} className="p-1 hover:bg-slate-50 rounded text-slate-500"><ChevronRight className="w-5 h-5"/></button>
             </div>
           </div>
           
           <div className="grid grid-cols-7 gap-1 text-center text-xs font-medium text-slate-500 mb-2">
-            <div>Su</div><div>Mo</div><div>Tu</div><div>We</div><div>Th</div><div>Fr</div><div>Sa</div>
+            {dayNames.map(d => <div key={d}>{d}</div>)}
           </div>
           
           <div className="grid grid-cols-7 gap-1 text-sm">
-            {Array.from({length: 31}).map((_, i) => (
-              <button 
-                key={i}
-                className={`w-8 h-8 rounded-full flex items-center justify-center mx-auto transition-colors ${
-                  i + 1 === 18 ? "bg-emerald-600 text-white font-bold shadow-md shadow-emerald-200" : 
-                  [5, 12, 19].includes(i + 1) ? "font-bold text-slate-900 bg-emerald-50" :
-                  "text-slate-700 hover:bg-slate-100"
-                }`}
-              >
-                {i + 1}
-              </button>
+            {/* Empty cells for days before 1st */}
+            {Array.from({ length: getFirstDayOfMonth(calendarMonth, calendarYear) }).map((_, i) => (
+              <div key={`empty-${i}`} className="w-8 h-8" />
             ))}
+            {Array.from({ length: getDaysInMonth(calendarMonth, calendarYear) }).map((_, i) => {
+              const day = i + 1;
+              const dateKey = `${calendarYear}-${String(calendarMonth + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+              const isToday = dateKey === todayKey;
+              const isSelected = dateKey === selectedDate;
+              const count = appointmentDateCounts[dateKey] || 0;
+
+              return (
+                <button
+                  key={day}
+                  onClick={() => handleDateClick(day)}
+                  className={`w-8 h-8 rounded-full flex items-center justify-center mx-auto transition-colors relative ${
+                    isSelected
+                      ? "bg-emerald-600 text-white font-bold shadow-md shadow-emerald-200"
+                      : isToday
+                        ? "ring-2 ring-emerald-400 font-bold text-emerald-700"
+                        : count > 0
+                          ? "font-bold text-slate-900 bg-emerald-50 hover:bg-emerald-100"
+                          : "text-slate-700 hover:bg-slate-100"
+                  }`}
+                >
+                  {day}
+                  {count > 0 && !isSelected && (
+                    <span className="absolute -bottom-0.5 left-1/2 -translate-x-1/2 w-1 h-1 rounded-full bg-emerald-500" />
+                  )}
+                </button>
+              );
+            })}
           </div>
+
+          {/* Selected date info */}
+          {selectedDate && (
+            <div className="mt-4 p-3 bg-emerald-50 rounded-lg border border-emerald-100">
+              <div className="flex items-center justify-between">
+                <p className="text-xs font-medium text-emerald-700">
+                  {new Date(selectedDate + 'T00:00:00').toLocaleDateString('vi-VN', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })}
+                </p>
+                <button onClick={() => setSelectedDate(null)} className="text-emerald-400 hover:text-emerald-600">
+                  <X className="w-3.5 h-3.5" />
+                </button>
+              </div>
+              <p className="text-xs text-emerald-600 mt-1">{appointmentDateCounts[selectedDate] || 0} lịch hẹn</p>
+            </div>
+          )}
 
           <div className="mt-8 pt-6 border-t border-slate-100 space-y-3">
             <h4 className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Lọc theo bác sĩ</h4>
@@ -390,23 +502,140 @@ export function Appointments() {
           <div className="p-4 border-b border-slate-100 flex flex-col sm:flex-row justify-between items-center bg-slate-50/50 gap-4">
             <h2 className="text-lg font-semibold text-slate-900 flex items-center gap-2">
               <Calendar className="w-5 h-5 text-emerald-600" />
-              Lịch hẹn hôm nay
-              <span className="bg-slate-200 text-slate-700 py-0.5 px-2.5 rounded-full text-xs ml-2">{selectedDoctor === "Tất cả" ? appointments.length : appointments.filter(a => a.doctorName === selectedDoctor).length}</span>
+              {selectedDate
+                ? `Lịch hẹn ${new Date(selectedDate + 'T00:00:00').toLocaleDateString('vi-VN')}`
+                : 'Tất cả lịch hẹn'}
+              <span className="bg-slate-200 text-slate-700 py-0.5 px-2.5 rounded-full text-xs ml-2">{filteredAppointments.length}</span>
             </h2>
             <div className="flex gap-2 w-full sm:w-auto">
-              <button className="flex-1 sm:flex-none flex items-center justify-center gap-2 px-3 py-1.5 bg-white border border-slate-200 text-slate-700 text-sm font-medium rounded-lg hover:bg-slate-50 transition-colors shadow-sm">
-                <Filter className="w-4 h-4" />
-                Bộ lọc
-              </button>
+              {/* Search */}
+              <div className="relative flex-1 sm:flex-none">
+                <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-400" />
+                <input
+                  type="text"
+                  placeholder="Tìm kiếm..."
+                  className="w-full sm:w-44 pl-8 pr-3 py-1.5 bg-white border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none transition-all"
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                />
+              </div>
+              {/* Filter button */}
+              <div className="relative">
+                <button
+                  className={`flex items-center justify-center gap-2 px-3 py-1.5 border text-sm font-medium rounded-lg transition-colors shadow-sm ${
+                    statusFilter !== 'Tất cả'
+                      ? 'bg-emerald-50 border-emerald-200 text-emerald-700'
+                      : 'bg-white border-slate-200 text-slate-700 hover:bg-slate-50'
+                  }`}
+                  onClick={() => setShowFilterPanel(!showFilterPanel)}
+                >
+                  <Filter className="w-4 h-4" />
+                  Bộ lọc
+                  {statusFilter !== 'Tất cả' && (
+                    <span className="w-5 h-5 bg-emerald-600 text-white rounded-full text-[10px] flex items-center justify-center font-bold">1</span>
+                  )}
+                </button>
+                {/* Filter dropdown */}
+                {showFilterPanel && (
+                  <div className="absolute right-0 top-full mt-2 w-64 bg-white rounded-xl shadow-lg border border-slate-200 z-30 animate-in fade-in slide-in-from-top-2 duration-200">
+                    <div className="p-3 border-b border-slate-100 flex items-center justify-between">
+                      <h4 className="text-sm font-semibold text-slate-800">Lọc theo trạng thái</h4>
+                      <button onClick={() => setShowFilterPanel(false)} className="text-slate-400 hover:text-slate-600">
+                        <X className="w-4 h-4" />
+                      </button>
+                    </div>
+                    <div className="p-3 space-y-1.5">
+                      {allStatuses.map((s) => (
+                        <label key={s} className="flex items-center gap-3 px-2 py-1.5 rounded-lg cursor-pointer hover:bg-slate-50 transition-colors">
+                          <input
+                            type="radio"
+                            name="status_filter"
+                            className="w-4 h-4 text-emerald-600 focus:ring-emerald-500 border-slate-300"
+                            checked={statusFilter === s}
+                            onChange={() => { setStatusFilter(s); setShowFilterPanel(false); }}
+                          />
+                          <span className={`text-sm font-medium ${statusFilter === s ? 'text-emerald-700' : 'text-slate-700'}`}>
+                            {s}
+                          </span>
+                          {s !== 'Tất cả' && (
+                            <span className={`ml-auto text-xs px-1.5 py-0.5 rounded-md border ${getStatusColor(s)}`}>
+                              {appointments.filter(a => a.status === s).length}
+                            </span>
+                          )}
+                        </label>
+                      ))}
+                    </div>
+                    {statusFilter !== 'Tất cả' && (
+                      <div className="p-3 border-t border-slate-100">
+                        <button
+                          onClick={() => { setStatusFilter('Tất cả'); setShowFilterPanel(false); }}
+                          className="w-full text-sm text-emerald-600 font-medium hover:text-emerald-700 transition-colors"
+                        >
+                          Xóa bộ lọc
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
             </div>
           </div>
+
+          {/* Active filters bar */}
+          {(selectedDate || statusFilter !== 'Tất cả' || selectedDoctor !== 'Tất cả' || searchQuery.trim()) && (
+            <div className="px-4 py-2 border-b border-slate-100 flex items-center gap-2 flex-wrap bg-slate-50/30">
+              <span className="text-xs text-slate-400 font-medium">Đang lọc:</span>
+              {selectedDate && (
+                <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-emerald-50 text-emerald-700 rounded-md text-xs font-medium border border-emerald-200">
+                  📅 {new Date(selectedDate + 'T00:00:00').toLocaleDateString('vi-VN')}
+                  <button onClick={() => setSelectedDate(null)} className="ml-0.5 hover:text-emerald-900"><X className="w-3 h-3" /></button>
+                </span>
+              )}
+              {statusFilter !== 'Tất cả' && (
+                <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-xs font-medium border ${getStatusColor(statusFilter)}`}>
+                  {statusFilter}
+                  <button onClick={() => setStatusFilter('Tất cả')} className="ml-0.5 hover:opacity-70"><X className="w-3 h-3" /></button>
+                </span>
+              )}
+              {selectedDoctor !== 'Tất cả' && (
+                <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-blue-50 text-blue-700 rounded-md text-xs font-medium border border-blue-200">
+                  🩺 {selectedDoctor}
+                  <button onClick={() => setSelectedDoctor('Tất cả')} className="ml-0.5 hover:text-blue-900"><X className="w-3 h-3" /></button>
+                </span>
+              )}
+              {searchQuery.trim() && (
+                <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-purple-50 text-purple-700 rounded-md text-xs font-medium border border-purple-200">
+                  🔍 "{searchQuery}"
+                  <button onClick={() => setSearchQuery('')} className="ml-0.5 hover:text-purple-900"><X className="w-3 h-3" /></button>
+                </span>
+              )}
+              <button
+                onClick={() => { setSelectedDate(null); setStatusFilter('Tất cả'); setSelectedDoctor('Tất cả'); setSearchQuery(''); }}
+                className="ml-auto text-xs text-slate-500 hover:text-red-600 font-medium transition-colors"
+              >
+                Xóa tất cả
+              </button>
+            </div>
+          )}
 
           <div className="flex-1 overflow-y-auto p-4 space-y-3">
             {loading ? (
               <div className="p-12 text-center text-sm text-slate-500">Đang tải dữ liệu...</div>
-            ) : appointments
-              .filter(apt => selectedDoctor === "Tất cả" || apt.doctorName === selectedDoctor)
-              .map((apt) => (
+            ) : filteredAppointments.length === 0 ? (
+              <div className="p-12 text-center">
+                <Calendar className="w-12 h-12 text-slate-300 mx-auto mb-3" />
+                <p className="text-sm font-medium text-slate-500">Không tìm thấy lịch hẹn nào</p>
+                <p className="text-xs text-slate-400 mt-1">Thử thay đổi bộ lọc hoặc chọn ngày khác</p>
+                {(selectedDate || statusFilter !== 'Tất cả' || selectedDoctor !== 'Tất cả' || searchQuery.trim()) && (
+                  <button
+                    onClick={() => { setSelectedDate(null); setStatusFilter('Tất cả'); setSelectedDoctor('Tất cả'); setSearchQuery(''); }}
+                    className="mt-3 px-4 py-1.5 text-sm font-medium text-emerald-600 bg-emerald-50 rounded-lg hover:bg-emerald-100 transition-colors"
+                  >
+                    Xóa bộ lọc
+                  </button>
+                )}
+              </div>
+            ) : filteredAppointments.map((apt) => (
               <div key={apt.appointmentId} className="group flex flex-col sm:flex-row gap-4 p-4 rounded-xl border border-slate-100 hover:border-emerald-500 hover:shadow-md transition-all bg-white relative">
                 
                 {/* Time Indicator */}
