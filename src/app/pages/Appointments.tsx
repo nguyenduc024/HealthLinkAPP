@@ -41,6 +41,22 @@ interface DoctorRankingItem {
   appointmentCount: number;
 }
 
+interface DoctorOption {
+  doctorId: number;
+  fullName: string;
+}
+
+interface PatientOption {
+  patientId: number;
+  fullName: string;
+}
+
+interface RoomOption {
+  roomId: number;
+  roomName: string;
+  roomNumber: string;
+}
+
 export function Appointments() {
   const [appointments, setAppointments] = useState<AppointmentData[]>([]);
   const [allDoctorNames, setAllDoctorNames] = useState<string[]>([]);
@@ -54,6 +70,66 @@ export function Appointments() {
   const [showDoctorRanking, setShowDoctorRanking] = useState(false);
   const [doctorRanking, setDoctorRanking] = useState<DoctorRankingItem[]>([]);
   const [rankingLoading, setRankingLoading] = useState(false);
+
+  // Book appointment state
+  const [showBooking, setShowBooking] = useState(false);
+  const [doctorOptions, setDoctorOptions] = useState<DoctorOption[]>([]);
+  const [patientOptions, setPatientOptions] = useState<PatientOption[]>([]);
+  const [roomOptions, setRoomOptions] = useState<RoomOption[]>([]);
+  const [bookForm, setBookForm] = useState({ doctorId: 0, patientId: 0, clinicRoomId: 0, reason: "", dateTime: "" });
+  const [bookLoading, setBookLoading] = useState(false);
+  const [bookMsg, setBookMsg] = useState<{ type: "success" | "error"; text: string } | null>(null);
+
+  const openBookingDialog = async () => {
+    setShowBooking(true);
+    setBookMsg(null);
+    setBookForm({ doctorId: 0, patientId: 0, clinicRoomId: 0, reason: "", dateTime: "" });
+    try {
+      const [d, p, r] = await Promise.all([
+        fetchApi<DoctorOption[]>("/doctors"),
+        fetchApi<PatientOption[]>("/patients"),
+        fetchApi<RoomOption[]>("/clinic-rooms"),
+      ]);
+      setDoctorOptions(d);
+      setPatientOptions(p);
+      setRoomOptions(r);
+    } catch {
+      setBookMsg({ type: "error", text: "Không thể tải danh sách. Kiểm tra kết nối backend." });
+    }
+  };
+
+  const submitBooking = async () => {
+    if (!bookForm.doctorId || !bookForm.patientId || !bookForm.clinicRoomId || !bookForm.dateTime) {
+      setBookMsg({ type: "error", text: "Vui lòng điền đầy đủ thông tin bắt buộc." });
+      return;
+    }
+    if (new Date(bookForm.dateTime) <= new Date()) {
+      setBookMsg({ type: "error", text: "Không thể đặt lịch trong quá khứ. Vui lòng chọn thời gian trong tương lai." });
+      return;
+    }
+    setBookLoading(true);
+    setBookMsg(null);
+    try {
+      const formatted = bookForm.dateTime.replace("T", " ") + ":00";
+      const res = await fetch(`${API_BASE}/book-appointment`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ ...bookForm, dateTime: formatted }),
+      });
+      const data = await res.json() as { status: string; message: string };
+      if (data.status === "success") {
+        setBookMsg({ type: "success", text: data.message });
+        setBookForm({ doctorId: 0, patientId: 0, clinicRoomId: 0, reason: "", dateTime: "" });
+        void reloadAppointments();
+      } else {
+        setBookMsg({ type: "error", text: data.message });
+      }
+    } catch {
+      setBookMsg({ type: "error", text: "Lỗi kết nối server." });
+    } finally {
+      setBookLoading(false);
+    }
+  };
 
   useEffect(() => {
     let isActive = true;
@@ -150,6 +226,10 @@ export function Appointments() {
       showToast("error", "Vui lòng chọn ngày giờ mới.");
       return;
     }
+    if (new Date(newDateTime) <= new Date()) {
+      showToast("error", "Không thể dời lịch sang thời gian trong quá khứ.");
+      return;
+    }
     setActionLoading(rescheduleModal.apId);
     try {
       const formatted = newDateTime.replace("T", " ") + ":00";
@@ -232,7 +312,10 @@ export function Appointments() {
             <Settings className="w-4 h-4" />
             Giờ làm việc
           </button>
-          <button className="flex items-center gap-2 px-4 py-2 bg-emerald-600 text-white text-sm font-medium rounded-lg hover:bg-emerald-700 transition-colors shadow-sm shadow-emerald-200">
+          <button
+            className="flex items-center gap-2 px-4 py-2 bg-emerald-600 text-white text-sm font-medium rounded-lg hover:bg-emerald-700 transition-colors shadow-sm shadow-emerald-200"
+            onClick={() => void openBookingDialog()}
+          >
             <Plus className="w-4 h-4" />
             Đặt lịch mới
           </button>
@@ -412,6 +495,7 @@ export function Appointments() {
               <input
                 type="datetime-local"
                 className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-emerald-500 outline-none"
+                min={new Date().toISOString().slice(0, 16)}
                 value={newDateTime}
                 onChange={(e) => setNewDateTime(e.target.value)}
               />
@@ -530,6 +614,101 @@ export function Appointments() {
                   </div>
                 </div>
               )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Booking Dialog */}
+      {showBooking && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm" onClick={() => setShowBooking(false)}>
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-lg mx-4 max-h-[90vh] overflow-y-auto" onClick={e => e.stopPropagation()}>
+            <div className="flex items-center justify-between p-6 pb-4 border-b border-slate-100">
+              <h2 className="text-lg font-bold text-slate-900">Đặt lịch hẹn mới</h2>
+              <button onClick={() => setShowBooking(false)} className="p-1 rounded-lg hover:bg-slate-100 transition-colors">
+                <X className="w-5 h-5 text-slate-400" />
+              </button>
+            </div>
+            <div className="p-6 space-y-4">
+              {bookMsg && (
+                <div className={`p-3 rounded-lg text-sm font-medium ${bookMsg.type === "success" ? "bg-emerald-50 text-emerald-700 border border-emerald-200" : "bg-red-50 text-red-700 border border-red-200"}`}>
+                  {bookMsg.text}
+                </div>
+              )}
+
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-1.5">Bác sĩ <span className="text-red-500">*</span></label>
+                <select
+                  className="w-full px-3 py-2.5 rounded-lg border border-slate-200 bg-white text-sm focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none"
+                  value={bookForm.doctorId}
+                  onChange={e => setBookForm(f => ({ ...f, doctorId: Number(e.target.value) }))}
+                >
+                  <option value={0}>-- Chọn bác sĩ --</option>
+                  {doctorOptions.map(d => <option key={d.doctorId} value={d.doctorId}>{d.fullName}</option>)}
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-1.5">Bệnh nhân <span className="text-red-500">*</span></label>
+                <select
+                  className="w-full px-3 py-2.5 rounded-lg border border-slate-200 bg-white text-sm focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none"
+                  value={bookForm.patientId}
+                  onChange={e => setBookForm(f => ({ ...f, patientId: Number(e.target.value) }))}
+                >
+                  <option value={0}>-- Chọn bệnh nhân --</option>
+                  {patientOptions.map(p => <option key={p.patientId} value={p.patientId}>{p.fullName}</option>)}
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-1.5">Phòng khám <span className="text-red-500">*</span></label>
+                <select
+                  className="w-full px-3 py-2.5 rounded-lg border border-slate-200 bg-white text-sm focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none"
+                  value={bookForm.clinicRoomId}
+                  onChange={e => setBookForm(f => ({ ...f, clinicRoomId: Number(e.target.value) }))}
+                >
+                  <option value={0}>-- Chọn phòng khám --</option>
+                  {roomOptions.map(r => <option key={r.roomId} value={r.roomId}>{r.roomName} - {r.roomNumber}</option>)}
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-1.5">Ngày giờ hẹn <span className="text-red-500">*</span></label>
+                <input
+                  type="datetime-local"
+                  className="w-full px-3 py-2.5 rounded-lg border border-slate-200 bg-white text-sm focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none"
+                  min={new Date().toISOString().slice(0, 16)}
+                  value={bookForm.dateTime}
+                  onChange={e => setBookForm(f => ({ ...f, dateTime: e.target.value }))}
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-1.5">Lý do khám</label>
+                <textarea
+                  className="w-full px-3 py-2.5 rounded-lg border border-slate-200 bg-white text-sm focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none resize-none"
+                  rows={3}
+                  placeholder="Mô tả triệu chứng hoặc lý do khám..."
+                  value={bookForm.reason}
+                  onChange={e => setBookForm(f => ({ ...f, reason: e.target.value }))}
+                />
+              </div>
+            </div>
+            <div className="flex gap-3 p-6 pt-4 border-t border-slate-100">
+              <button
+                onClick={() => setShowBooking(false)}
+                className="flex-1 px-4 py-2.5 text-sm font-medium text-slate-700 bg-white border border-slate-200 rounded-lg hover:bg-slate-50 transition-colors"
+              >
+                Hủy
+              </button>
+              <button
+                onClick={() => void submitBooking()}
+                disabled={bookLoading}
+                className="flex-1 px-4 py-2.5 text-sm font-medium text-white bg-emerald-600 rounded-lg hover:bg-emerald-700 transition-colors disabled:opacity-50 flex items-center justify-center gap-2"
+              >
+                {bookLoading && <Loader2 className="w-4 h-4 animate-spin" />}
+                {bookLoading ? "Đang xử lý..." : "Xác nhận đặt lịch"}
+              </button>
             </div>
           </div>
         </div>
