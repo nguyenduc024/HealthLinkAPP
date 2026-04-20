@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from "react";
 import { Outlet, NavLink } from "react-router";
+//Các icon được sử dụng trong layout
 import { 
   LayoutDashboard, 
   Users, 
@@ -11,6 +12,7 @@ import {
   Bell,
   X
 } from "lucide-react";
+// Hàm fetchApi để gọi API backend (Restful)
 import { fetchApi } from "../lib/api";
 
 const logoHub = new URL("../../assets/logoHUB.png", import.meta.url).href;

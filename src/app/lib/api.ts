@@ -19,7 +19,7 @@ export async function fetchApi<T>(path: string): Promise<T> {
     }
 
     const data = await response.json() as T;
-    // Lưu cache khi fetch thành công
+    // Lưu cache khi fetch thành công để dùng khi lỗi sau này
     apiCache.set(path, data);
     return data;
   } catch (err) {

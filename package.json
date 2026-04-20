@@ -23,7 +23,7 @@
     "appId": "com.healthlink.clinic",
     "productName": "HealthLink",
     "directories": {
-      "output": "release"
+      "output": "release" 
     },
     "files": [
       "dist-electron/**",

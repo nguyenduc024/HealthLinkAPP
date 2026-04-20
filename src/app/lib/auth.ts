@@ -1,6 +1,6 @@
 const AUTH_STORAGE_KEY = "healthlink-authenticated";
 
-const ADMIN_USERNAME = "nhom8";
+const ADMIN_USERNAME = "nhom7";
 const ADMIN_PASSWORD = "hub@1976";
 
 export function isAuthenticated(): boolean {

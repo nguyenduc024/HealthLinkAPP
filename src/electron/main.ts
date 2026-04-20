@@ -23,8 +23,8 @@ function refreshPath(): void {
 
 refreshPath();
 
-const BACKEND_URL = 'http://localhost:8080';
-const FRONTEND_URL = 'http://localhost:5173';
+const BACKEND_URL = 'http://localhost:8080'; //cổng backend Spring Boot mặc định là 8080
+const FRONTEND_URL = 'http://localhost:5173'; //cổng frontend vite là 5173
 const IS_DEV = process.env.NODE_ENV === 'development';
 
 let backendProcess: ChildProcess | null = null;
