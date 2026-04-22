@@ -49,11 +49,11 @@ public class MedicalRecord {
 		this.patient = patient;
 	}
 
-	public int getAppointmentId() {
+	public int getappointmentId() {
 		return appointmentId;
 	}
 
-	public void setAppointmentId(int appointmentId) {
+	public void setappointmentId(int appointmentId) {
 		this.appointmentId = appointmentId;
 	}
 

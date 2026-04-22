@@ -119,7 +119,7 @@ public class ClinicManagerDAO {
 			PreparedStatement psMR = conn.prepareStatement(sqlMR, Statement.RETURN_GENERATED_KEYS);
 			psMR.setInt(1, mr.getDoctor().getId());
 			psMR.setInt(2, mr.getPatient().getId());
-			psMR.setInt(3, mr.getAppointmentId());
+			psMR.setInt(3, mr.getappointment());
 			psMR.setString(4, mr.getDiagnosis());
 			psMR.setString(5, mr.getMethod());
 			psMR.setString(6, mr.getTestResult());
@@ -155,7 +155,7 @@ public class ClinicManagerDAO {
 			// Bảng 4: Tự động tạo hóa đơn (INVOICE)
 			String sqlInv = "INSERT INTO INVOICE (APId, PRId, INTotalPrice, INPaymentMethod, INStatus) VALUES (?, ?, ?, NULL, N'Chưa thanh toán')";
 			PreparedStatement psInv = conn.prepareStatement(sqlInv, Statement.RETURN_GENERATED_KEYS);
-			psInv.setInt(1, mr.getAppointmentId());
+			psInv.setInt(1, mr.getappointment());
 			psInv.setInt(2, prId);
 			psInv.setDouble(3, totalPrice);
 			psInv.executeUpdate();
@@ -172,7 +172,7 @@ public class ClinicManagerDAO {
 			// Đổi trạng thái lịch hẹn thành 'Hoàn thành'
 			String updateApSql = "UPDATE APPOINTMENT SET APStatus = N'Hoàn thành', APUpdateAt = GETDATE() WHERE APId = ?";
 			PreparedStatement psUpdateAp = conn.prepareStatement(updateApSql);
-			psUpdateAp.setInt(1, mr.getAppointmentId());
+			psUpdateAp.setInt(1, mr.getappointment());
 			psUpdateAp.executeUpdate();
 
 			conn.commit(); // Tất cả đều ổn -> Lưu xuống Database
@@ -251,7 +251,7 @@ public class ClinicManagerDAO {
 
 	// 7. Hiển thị danh sách lịch hẹn theo bác sĩ
 	public static class AppointmentInfo {
-		public int appointmentId;
+		public int appointment;
 		public int patientId;
 		public int doctorId;
 		public String patientName;
@@ -262,9 +262,9 @@ public class ClinicManagerDAO {
 		public String reason;
 		public String status;
 
-		public AppointmentInfo(int appointmentId, int patientId, int doctorId, String patientName, String doctorName, String clinicRoomName,
+		public AppointmentInfo(int appointment, int patientId, int doctorId, String patientName, String doctorName, String clinicRoomName,
 				String dateTime, String reason, String status, String createdAt) {
-			this.appointmentId = appointmentId;
+			this.appointment = appointment;
 			this.patientId = patientId;
 			this.doctorId = doctorId;
 			this.patientName = patientName;
@@ -518,7 +518,7 @@ public class ClinicManagerDAO {
 	// Lấy danh sách hóa đơn
 	public static class InvoiceInfo {
 		public int invoiceId;
-		public int appointmentId;
+		public int appointment;
 		public Integer prescriptionId;
 		public String patientName;
 		public String doctorName;
@@ -527,10 +527,10 @@ public class ClinicManagerDAO {
 		public String status;
 		public String paidDate;
 
-		public InvoiceInfo(int invoiceId, int appointmentId, Integer prescriptionId, String patientName,
+		public InvoiceInfo(int invoiceId, int appointment, Integer prescriptionId, String patientName,
 				String doctorName, double totalPrice, String paymentMethod, String status, String paidDate) {
 			this.invoiceId = invoiceId;
-			this.appointmentId = appointmentId;
+			this.appointment = appointment;
 			this.prescriptionId = prescriptionId;
 			this.patientName = patientName;
 			this.doctorName = doctorName;
@@ -573,7 +573,7 @@ public class ClinicManagerDAO {
 	// Chi tiết hóa đơn đầy đủ (dùng cho trang Billing)
 	public static class InvoiceDetailInfo {
 		public int invoiceId;
-		public int appointmentId;
+		public int appointment;
 		public Integer prescriptionId;
 		public String patientName;
 		public String patientPhone;
@@ -635,7 +635,7 @@ public class ClinicManagerDAO {
 				if (rs.next()) {
 					info = new InvoiceDetailInfo();
 					info.invoiceId = rs.getInt("INId");
-					info.appointmentId = rs.getInt("APId");
+					info.appointment = rs.getInt("APId");
 					info.prescriptionId = (Integer) rs.getObject("PRId");
 					info.totalPrice = rs.getDouble("INTotalPrice");
 					info.paymentMethod = rs.getString("INPaymentMethod");
