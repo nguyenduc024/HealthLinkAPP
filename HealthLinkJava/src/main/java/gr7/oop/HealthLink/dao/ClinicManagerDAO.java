@@ -325,7 +325,7 @@ public class ClinicManagerDAO {
 		return list;
 	}
 
-	public List<AppointmentInfo> sByDoctor(int doctorId) {
+	public List<AppointmentInfo> getAppointmentsByDoctor(int doctorId) {
 		List<AppointmentInfo> list = new ArrayList<>();
 		String sql = "SELECT a.APId, a.PId, a.DrId, p.PLastName + ' ' + ISNULL(p.PMiddleName + ' ', '') + p.PFirstName AS PatientName, "
 				+ "d.DrLastName + ' ' + ISNULL(d.DrMiddleName + ' ', '') + d.DrFirstName AS DoctorName, "
