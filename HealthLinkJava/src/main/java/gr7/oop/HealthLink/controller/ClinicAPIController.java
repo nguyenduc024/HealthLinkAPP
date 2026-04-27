@@ -136,7 +136,7 @@ public class ClinicAPIController {
 		Map<String, Object> result = new java.util.HashMap<>();
 		try {
 			// 0. Kiểm tra trạng thái lịch hẹn — chỉ cho phép "Đã xác nhận"
-			String apStatus = dao.getAppointmentStatus(req.appointmentId);
+			String apStatus = dao.Status(req.appointmentId);
 			if (apStatus == null) {
 				result.put("status", "error");
 				result.put("message", "Không tìm thấy lịch hẹn #" + req.appointmentId);
