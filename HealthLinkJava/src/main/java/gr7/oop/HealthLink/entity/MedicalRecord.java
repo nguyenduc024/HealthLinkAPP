@@ -6,19 +6,19 @@ public class MedicalRecord {
 	private int mrId;
 	private Doctor doctor; // Bác sĩ lập hồ sơ
 	private Patient patient; // Bệnh nhân được khám
-	private int appointmentId; // ID cuộc hẹn tương ứng (Quan hệ 1-1)
+	private int appointment; // ID cuộc hẹn tương ứng (Quan hệ 1-1)
 	private String diagnosis;
 	private String method;
 	private String testResult;
 	private Timestamp createdAt;
 
 	// constructor
-	public MedicalRecord(int mrId, Doctor doctor, Patient patient, int appointmentId, String diagnosis, String method,
+	public MedicalRecord(int mrId, Doctor doctor, Patient patient, int appointment, String diagnosis, String method,
 			String testResult) {
 		this.mrId = mrId;
 		this.doctor = doctor;
 		this.patient = patient;
-		this.appointmentId = appointmentId;
+		this.appointment = appointment;
 		this.diagnosis = diagnosis;
 		this.method = method;
 		this.testResult = testResult;
@@ -49,12 +49,12 @@ public class MedicalRecord {
 		this.patient = patient;
 	}
 
-	public int getappointmentId() {
-		return appointmentId;
+	public int getappointment() {
+		return appointment;
 	}
 
-	public void setappointmentId(int appointmentId) {
-		this.appointmentId = appointmentId;
+	public void setappointment(int appointment) {
+		this.appointment = appointment;
 	}
 
 	public String getDiagnosis() {

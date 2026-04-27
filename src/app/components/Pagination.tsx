@@ -1,3 +1,4 @@
+//Component phân trang để hiển thị số trang, nút chuyển trang trước/sau và thông tin về số bản ghi đang hiển thị. Người dùng có thể nhấp vào các nút để chuyển đến trang mong muốn.
 import { ChevronLeft, ChevronRight } from "lucide-react";
 
 interface PaginationProps {

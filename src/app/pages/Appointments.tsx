@@ -92,7 +92,7 @@ function formatWsDay(dateStr: string): string {
   };
   return MAP[dateStr] ?? dateStr;
 }
-
+//
 function WorkScheduleModal({
   workSchedules, wsLoading, wsSearchDoctor, setWsSearchDoctor, onClose,
 }: {
@@ -209,9 +209,10 @@ function WorkScheduleModal({
   );
 }
 
+// Xếp hạng bác sĩ modal
 export function Appointments() {
-  const [appointments, setAppointments] = useState<AppointmentData[]>([]);
-  const [allDoctorNames, setAllDoctorNames] = useState<string[]>([]);
+  const [appointments, setAppointments] = useState<AppointmentData[]>([]); // Dữ liệu lịch hẹn
+  const [allDoctorNames, setAllDoctorNames] = useState<string[]>([]); // Danh sách tên bác sĩ để lọc
   const [loading, setLoading] = useState(true);
   const [selectedDoctor, setSelectedDoctor] = useState("Tất cả");
   const [doctorSearch, setDoctorSearch] = useState("");
@@ -314,7 +315,7 @@ export function Appointments() {
     const loadData = async () => {
       try {
         const [apData, drData] = await Promise.all([
-          fetchApi<AppointmentData[]>("/appointments"),
+          fetchApi<AppointmentData[]>("/appointments"), // API trả về đã được sort theo ngày giờ ở backend
           fetchApi<DoctorBasic[]>("/doctors"),
         ]);
         if (isActive) {
@@ -363,9 +364,10 @@ export function Appointments() {
     setTimeout(() => setToast(null), 3000);
   };
 
+  // Tải lại danh sách lịch hẹn sau khi có thay đổi
   const reloadAppointments = async () => {
     try {
-      const data = await fetchApi<AppointmentData[]>("/appointments");
+      const data = await fetchApi<AppointmentData[]>("/appointments"); // API trả về đã được sort theo ngày giờ ở backend 
       setAppointments(data);
     } catch {}
   };

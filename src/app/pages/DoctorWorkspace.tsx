@@ -1,3 +1,4 @@
+//Trang làm việc của bác sĩ để ghi hồ sơ bệnh án và kê đơn thuốc cho bệnh nhân. Bác sĩ có thể xem danh sách chờ khám, chọn bệnh nhân, nhập chẩn đoán, phương pháp điều trị, kết quả xét nghiệm và thêm thuốc vào đơn. Sau khi hoàn tất, hồ sơ bệnh án, đơn thuốc và hóa đơn sẽ được tạo ra.
 import { useState, useEffect } from "react";
 import { Pagination } from "../components/Pagination";
 
@@ -152,6 +153,7 @@ export function DoctorWorkspace() {
       !prescriptionItems.some((p) => p.medicineId === m.medicineId)
   );
 
+  // Thêm thuốc vào đơn
   const addMedicine = (med: MedicineInfo) => {
     setPrescriptionItems((prev) => [
       ...prev,
@@ -168,10 +170,12 @@ export function DoctorWorkspace() {
     setMedSearch("");
   };
 
+  // Xóa thuốc khỏi đơn
   const removeMedicine = (idx: number) => {
     setPrescriptionItems((prev) => prev.filter((_, i) => i !== idx));
   };
 
+  // Cập nhật thông tin thuốc trong đơn
   const updatePrescriptionItem = (idx: number, field: keyof PrescriptionItem, value: string | number) => {
     setPrescriptionItems((prev) =>
       prev.map((item, i) => (i === idx ? { ...item, [field]: value } : item))
@@ -212,7 +216,7 @@ export function DoctorWorkspace() {
           guide: item.guide,
         })),
       };
-
+      // Gửi yêu cầu tạo hồ sơ bệnh án, đơn thuốc và hóa đơn. API sẽ trả về ID của các bản ghi mới tạo để hiển thị kết quả hóa đơn.
       const res = await fetch(`${API_BASE}/medical-record/create`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },

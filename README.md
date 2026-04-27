@@ -121,7 +121,7 @@ Maven dùng để build và chạy backend Spring Boot.
    - Thêm vào **Path**: `%MAVEN_HOME%\bin`
 5. Khởi động lại terminal, kiểm tra:
    ```bash
-   mvn --version
+   
    # Apache Maven 3.9.x
    # Java version: 21.x.x
    ```
